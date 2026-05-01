@@ -3,15 +3,19 @@
 import React, { useState } from "react";
 import { LogIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { usePersistedForm } from "@/lib/usePersistedForm";
 
 export default function BankDetailsPage() {
   const [isSaving, setIsSaving] = useState(false);
-  const [accountNo, setAccountNo] = useState("");
-  const [ifsc, setIfsc] = useState("");
+  const [formData, setFormData] = usePersistedForm("farmer_bank", {
+    accountNo: "",
+    ifsc: "",
+    bankName: "STATE BANK OF INDIA - MAIN BRANCH"
+  });
   const [history, setHistory] = useState<any[]>([]);
 
   const handleSave = () => {
-    if (!accountNo || !ifsc) {
+    if (!formData.accountNo || !formData.ifsc) {
       toast.error("Please fill all mandatory fields");
       return;
     }
@@ -23,13 +27,11 @@ export default function BankDetailsPage() {
       const newEntry = {
         date: new Date().toLocaleDateString('en-GB'),
         status: "Updated Successfully",
-        remarks: `Acc: ****${accountNo.slice(-4)}`
+        remarks: `Acc: ****${formData.accountNo.slice(-4)}`
       };
       
       setHistory([newEntry, ...history]);
       setIsSaving(false);
-      setAccountNo("");
-      setIfsc("");
       toast.success("Bank details updated successfully!");
     }, 1500);
   };
@@ -48,8 +50,8 @@ export default function BankDetailsPage() {
           <label className="text-[13px] font-bold text-[#1B4332]">Bank Account No. <span className="text-red-500">*</span></label>
           <input 
             type="text" 
-            value={accountNo}
-            onChange={(e) => setAccountNo(e.target.value)}
+            value={formData.accountNo}
+            onChange={(e) => setFormData({ ...formData, accountNo: e.target.value })}
             placeholder="Enter Account Number"
             className="w-full px-3 py-2 bg-white border border-gray-300 rounded focus:border-[#1B4332] focus:ring-1 focus:ring-[#1B4332] outline-none text-sm transition-all"
           />
@@ -59,8 +61,8 @@ export default function BankDetailsPage() {
           <label className="text-[13px] font-bold text-[#1B4332]">IFSC Code <span className="text-red-500">*</span></label>
           <input 
             type="text" 
-            value={ifsc}
-            onChange={(e) => setIfsc(e.target.value)}
+            value={formData.ifsc}
+            onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
             placeholder="e.g. SBIN0001234"
             className="w-full px-3 py-2 bg-white border border-gray-300 rounded focus:border-[#1B4332] focus:ring-1 focus:ring-[#1B4332] outline-none text-sm transition-all uppercase"
           />
@@ -69,7 +71,7 @@ export default function BankDetailsPage() {
         <div className="flex flex-col gap-1">
           <label className="text-[13px] font-bold text-[#1B4332]">Bank Branch Name <span className="text-red-500">*</span></label>
           <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm text-gray-500 h-[38px] flex items-center">
-            {ifsc.length >= 4 ? "STATE BANK OF INDIA - MAIN BRANCH" : "Auto-filled from IFSC"}
+            {formData.ifsc.length >= 4 ? formData.bankName : "Auto-filled from IFSC"}
           </div>
         </div>
       </div>
@@ -122,3 +124,4 @@ export default function BankDetailsPage() {
     </div>
   );
 }
+

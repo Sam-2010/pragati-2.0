@@ -3,18 +3,38 @@
 import React, { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { usePersistedForm } from "@/lib/usePersistedForm";
+import { MAHARASHTRA_GEOGRAPHY, District } from "@/lib/geography";
 
 export default function LandDetailsPage() {
   const [isSaving, setIsSaving] = useState(false);
-  const [district, setDistrict] = useState("-- Select District --");
-  const [taluka, setTaluka] = useState("-- Select Taluka --");
-  const [village, setVillage] = useState("-- Select village --");
-  const [khataNo, setKhataNo] = useState("");
-  const [surveyNo, setSurveyNo] = useState("");
+  
+  const [formData, setFormData] = usePersistedForm("farmer_land", {
+    district: "" as District | "",
+    taluka: "",
+    village: "-- Select village --",
+    khataNo: "",
+    surveyNo: "",
+    landArea: "" // Added for progress calculation
+  });
+
   const [records, setRecords] = useState<any[]>([]);
 
+  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedDist = e.target.value as District;
+    if (selectedDist && MAHARASHTRA_GEOGRAPHY[selectedDist]) {
+      setFormData({ 
+        ...formData, 
+        district: selectedDist, 
+        taluka: MAHARASHTRA_GEOGRAPHY[selectedDist][0] 
+      });
+    } else {
+      setFormData({ ...formData, district: "", taluka: "" });
+    }
+  };
+
   const handleSave = () => {
-    if (district === "-- Select District --" || !khataNo || !surveyNo) {
+    if (!formData.district || !formData.khataNo || !formData.surveyNo) {
       toast.error("Please fill all mandatory fields (District, Khata No, Survey No)");
       return;
     }
@@ -25,12 +45,12 @@ export default function LandDetailsPage() {
     setTimeout(() => {
       const newRecord = {
         id: Date.now(),
-        district,
-        taluka,
-        village,
-        khataNo,
+        district: formData.district,
+        taluka: formData.taluka,
+        village: formData.village,
+        khataNo: formData.khataNo,
         area: "1.25",
-        surveyNo,
+        surveyNo: formData.surveyNo,
         individual: "0.75",
         joint: "0.50"
       };
@@ -38,9 +58,13 @@ export default function LandDetailsPage() {
       setRecords([newRecord, ...records]);
       setIsSaving(false);
       
-      // Reset some fields
-      setKhataNo("");
-      setSurveyNo("");
+      // Reset some fields but keep district/taluka for convenience
+      setFormData({
+        ...formData,
+        khataNo: "",
+        surveyNo: "",
+        landArea: "1.25" // Mark as filled for progress
+      });
       toast.success("Land record added successfully!");
     }, 1200);
   };
@@ -76,30 +100,37 @@ export default function LandDetailsPage() {
         <div className="flex flex-col gap-1">
           <label className="text-[13px] font-bold text-gray-700">District <span className="text-red-500">*</span></label>
           <select 
-            value={district}
-            onChange={(e) => setDistrict(e.target.value)}
+            value={formData.district}
+            onChange={handleDistrictChange}
             className="px-3 py-2 border border-gray-300 rounded outline-none focus:border-[#1B4332] text-[13px] text-gray-600 bg-white"
           >
-            {["-- Select District --", "Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed"].map(opt => <option key={opt}>{opt}</option>)}
+            <option value="">-- Select District --</option>
+            {Object.keys(MAHARASHTRA_GEOGRAPHY).map(dist => (
+              <option key={dist} value={dist}>{dist}</option>
+            ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-[13px] font-bold text-gray-700">Taluka <span className="text-red-500">*</span></label>
           <select 
-            value={taluka}
-            onChange={(e) => setTaluka(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded outline-none focus:border-[#1B4332] text-[13px] text-gray-600 bg-white"
+            value={formData.taluka}
+            onChange={(e) => setFormData({ ...formData, taluka: e.target.value })}
+            disabled={!formData.district}
+            className="px-3 py-2 border border-gray-300 rounded outline-none focus:border-[#1B4332] text-[13px] text-gray-600 bg-white disabled:bg-gray-50"
           >
-            {["-- Select Taluka --", "Paithan", "Gangapur", "Vaijapur", "Kannad"].map(opt => <option key={opt}>{opt}</option>)}
+            {!formData.district && <option value="">-- Select District First --</option>}
+            {formData.district && (MAHARASHTRA_GEOGRAPHY as any)[formData.district].map((tal: string) => (
+              <option key={tal} value={tal}>{tal}</option>
+            ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-[13px] font-bold text-gray-700">Village / City <span className="text-red-500">*</span></label>
           <select 
-            value={village}
-            onChange={(e) => setVillage(e.target.value)}
+            value={formData.village}
+            onChange={(e) => setFormData({ ...formData, village: e.target.value })}
             className="px-3 py-2 border border-gray-300 rounded outline-none focus:border-[#1B4332] text-[13px] text-gray-600 bg-white"
           >
             {["-- Select village --", "Sample Village 1", "Sample Village 2"].map(opt => <option key={opt}>{opt}</option>)}
@@ -117,8 +148,8 @@ export default function LandDetailsPage() {
             <label className="text-[13px] font-bold text-gray-700">8A Khata Number <span className="text-red-500">*</span></label>
             <input 
               type="text" 
-              value={khataNo}
-              onChange={(e) => setKhataNo(e.target.value)}
+              value={formData.khataNo}
+              onChange={(e) => setFormData({ ...formData, khataNo: e.target.value })}
               placeholder="Enter Khata Number"
               className="px-3 py-2 border border-gray-300 rounded outline-none focus:border-[#1B4332] text-sm" 
             />
@@ -143,8 +174,8 @@ export default function LandDetailsPage() {
             <label className="text-[13px] font-bold text-gray-700">Survey Number / Gat Number <span className="text-red-500">*</span></label>
             <input 
               type="text" 
-              value={surveyNo}
-              onChange={(e) => setSurveyNo(e.target.value)}
+              value={formData.surveyNo}
+              onChange={(e) => setFormData({ ...formData, surveyNo: e.target.value })}
               placeholder="Enter Survey No."
               className="px-3 py-2 border border-gray-300 rounded outline-none text-sm focus:border-[#1B4332]" 
             />
@@ -219,3 +250,4 @@ export default function LandDetailsPage() {
     </div>
   );
 }
+

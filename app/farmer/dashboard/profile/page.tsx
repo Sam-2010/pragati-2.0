@@ -1,17 +1,27 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Phone, Check, Loader2 } from "lucide-react";
+import { User, Phone, Check, Loader2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
+import { usePersistedForm } from "@/lib/usePersistedForm";
+import { ProfileProgress } from "@/components/ProfileProgress";
 
 export default function ProfilePage() {
+  const [formData, setFormData] = usePersistedForm("farmer_profile", {
+    aadhaar: "XXXXXXXX7181",
+    name: "Mangulkar Sameer Sandeep",
+    mobile: "9876543210",
+    dob: "20/10/2006",
+    age: "19",
+    gender: "Male"
+  });
+
   const [isUpdatingMobile, setIsUpdatingMobile] = useState(false);
-  const [mobileNo, setMobileNo] = useState("9876543210");
   const [isEditingMobile, setIsEditingMobile] = useState(false);
 
   const handleUpdateMobile = () => {
     if (isEditingMobile) {
-      if (mobileNo.length !== 10) {
+      if (formData.mobile.length !== 10) {
         toast.error("Invalid mobile number. Must be 10 digits.");
         return;
       }
@@ -28,15 +38,8 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Profile Completeness */}
-      <div className="w-full">
-        <div className="flex justify-center mb-1">
-          <span className="text-[13px] font-bold text-gray-700">Profile Completeness <span className="text-[#B91C1C]">50%</span></span>
-        </div>
-        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-          <div className="bg-[#B91C1C] h-full" style={{ width: "50%" }}></div>
-        </div>
-      </div>
+      {/* Profile Completeness - NOW DYNAMIC */}
+      <ProfileProgress />
 
       {/* Header Info Section */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-gray-100 pb-6 gap-6">
@@ -70,9 +73,24 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-          <ProfileField label="Farmer ID" value="FMR20241020" required />
-          <ProfileField label="Aadhaar Number" value="XXXXXXXX7181" required />
-          <ProfileField label="Farmer Name" value="Mangulkar Sameer Sandeep" required />
+          <EditableField 
+            label="Farmer ID" 
+            value="FMR20241020" 
+            readonly 
+            required 
+          />
+          <EditableField 
+            label="Aadhaar Number" 
+            value={formData.aadhaar} 
+            onChange={(val) => setFormData({ ...formData, aadhaar: val })}
+            required 
+          />
+          <EditableField 
+            label="Farmer Name" 
+            value={formData.name} 
+            onChange={(val) => setFormData({ ...formData, name: val })}
+            required 
+          />
           
           <div className="flex flex-col gap-1">
             <label className="text-[13px] font-bold text-gray-700">Mobile Number <span className="text-red-500">*</span></label>
@@ -80,13 +98,13 @@ export default function ProfilePage() {
               {isEditingMobile ? (
                 <input 
                   type="text" 
-                  value={mobileNo}
-                  onChange={(e) => setMobileNo(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  value={formData.mobile}
+                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                   className="flex-1 px-3 py-2 bg-white border border-[#1B4332] rounded text-[13px] text-gray-700 focus:outline-none"
                   autoFocus
                 />
               ) : (
-                <div className="flex-1 px-3 py-2 bg-gray-100 border border-gray-200 rounded text-[13px] text-gray-700">{mobileNo}</div>
+                <div className="flex-1 px-3 py-2 bg-gray-100 border border-gray-200 rounded text-[13px] text-gray-700">{formData.mobile}</div>
               )}
               
               <button 
@@ -95,18 +113,30 @@ export default function ProfilePage() {
                 className={`text-white text-[12px] font-bold px-4 py-1 rounded transition-all flex items-center gap-2
                   ${isEditingMobile ? "bg-[#1B4332]" : "bg-[#5CB85C]"}`}
               >
-                {isUpdatingMobile ? <Loader2 className="animate-spin" size={14} /> : (isEditingMobile ? <Check size={14} /> : null)}
-                {isUpdatingMobile ? "Updating..." : (isEditingMobile ? "Save" : "Update MobileNo.")}
+                {isUpdatingMobile ? <Loader2 className="animate-spin" size={14} /> : (isEditingMobile ? <Check size={14} /> : <Edit2 size={12} />)}
+                {isUpdatingMobile ? "Updating..." : (isEditingMobile ? "Save" : "Update")}
               </button>
-            </div>
-            <div className="bg-[#D97706]/10 text-[#D97706] text-[10px] px-2 py-1 rounded mt-1 border border-[#D97706]/20 font-medium">
-              Mobile number should contain 10 digits and start with the 6,7,8,9
             </div>
           </div>
 
-          <ProfileField label="Date of Birth" value="20/10/2006" required />
-          <ProfileField label="Age" value="19" required />
-          <ProfileField label="Gender" value="Male" required />
+          <EditableField 
+            label="Date of Birth" 
+            value={formData.dob} 
+            onChange={(val) => setFormData({ ...formData, dob: val })}
+            required 
+          />
+          <EditableField 
+            label="Age" 
+            value={formData.age} 
+            onChange={(val) => setFormData({ ...formData, age: val })}
+            required 
+          />
+          <EditableField 
+            label="Gender" 
+            value={formData.gender} 
+            onChange={(val) => setFormData({ ...formData, gender: val })}
+            required 
+          />
         </div>
       </section>
 
@@ -118,24 +148,35 @@ export default function ProfilePage() {
 
         <div className="flex flex-col gap-1">
           <label className="text-[13px] font-bold text-gray-700">Farmer Address <span className="text-red-500">*</span></label>
-          <div className="w-full px-3 py-3 bg-gray-100 border border-gray-200 rounded text-[13px] text-gray-700 min-h-[80px] shadow-inner">
-            plot no-6 sarve no-27, galli no-11, near mscb dipi, Aurangabad (mh), 431001
-          </div>
+          <textarea 
+            className="w-full px-3 py-3 bg-gray-100 border border-gray-200 rounded text-[13px] text-gray-700 min-h-[80px] shadow-inner outline-none focus:border-[#1B4332] transition-all"
+            defaultValue="plot no-6 sarve no-27, galli no-11, near mscb dipi, Aurangabad (mh), 431001"
+          />
         </div>
       </section>
     </div>
   );
 }
 
-function ProfileField({ label, value, required = false }: { label: string, value: string, required?: boolean }) {
+function EditableField({ label, value, onChange, required = false, readonly = false }: { label: string, value: string, onChange?: (val: string) => void, required?: boolean, readonly?: boolean }) {
   return (
     <div className="flex flex-col gap-1 group">
       <label className="text-[13px] font-bold text-gray-700 group-hover:text-[#1B4332] transition-colors">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded text-[13px] text-gray-700 group-hover:border-gray-300 transition-all">
-        {value}
-      </div>
+      {readonly ? (
+        <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded text-[13px] text-gray-700 font-mono">
+          {value}
+        </div>
+      ) : (
+        <input 
+          type="text"
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          className="px-3 py-2 bg-white border border-gray-200 rounded text-[13px] text-gray-700 focus:outline-none focus:border-[#1B4332] transition-all"
+        />
+      )}
     </div>
   );
 }
+
