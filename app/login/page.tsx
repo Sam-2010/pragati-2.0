@@ -3,11 +3,26 @@
 import { useActionState } from 'react'
 import { login } from './actions'
 import { toast } from 'sonner'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2, ShieldCheck } from 'lucide-react'
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, null)
+  const [clientError, setClientError] = useState<string | null>(null)
+
+  const handleSubmit = (formData: FormData) => {
+    setClientError(null)
+    const email = formData.get('email')
+    const password = formData.get('password')
+
+    if (!email || !password) {
+      setClientError("Please enter your credentials")
+      toast.error("Please enter your credentials")
+      return
+    }
+
+    formAction(formData)
+  }
 
   useEffect(() => {
     if (state?.error) {
@@ -36,7 +51,12 @@ export default function LoginPage() {
             <p className="text-[#717973] text-xs mt-4">Officer & Clerk Authentication</p>
           </div>
 
-          <form action={formAction} className="space-y-5">
+          <form action={handleSubmit} className="space-y-5">
+            {clientError && (
+              <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-2 rounded-lg text-xs font-bold animate-pulse">
+                {clientError}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-[#414844] mb-1.5" htmlFor="email">
                 Email Address

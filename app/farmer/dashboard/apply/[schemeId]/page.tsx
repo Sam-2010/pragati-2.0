@@ -52,6 +52,14 @@ const SCHEMES_DATA: Record<string, any> = {
   }
 };
 
+const DOC_TRANSLATIONS: Record<string, Record<string, string>> = {
+  "7/12 Extract": { EN: "7/12 Extract", MR: "७/१२ उतारा" },
+  "8A Holding": { EN: "8A Holding", MR: "८अ उतारा" },
+  "Aadhaar Card": { EN: "Aadhaar Card", MR: "आधार कार्ड" },
+  "Bank Passbook Copy": { EN: "Bank Passbook Copy", MR: "बँक पासबुक" },
+  "Caste Certificate": { EN: "Caste Certificate", MR: "जातीचा दाखला" }
+};
+
 export default function SchemeApplicationPage() {
   const params = useParams();
   const schemeId = params?.schemeId as string;
@@ -265,7 +273,7 @@ function DocumentUploadCard({ docName, lang, file, status, errorMessage, onFileS
       <div className="p-5 flex justify-between items-start">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lang === "EN" ? "Required Document" : "आवश्यक कागदपत्र"}</span>
-          <h4 className="text-lg font-bold text-gray-800">{docName}</h4>
+          <h4 className="text-lg font-bold text-gray-800">{DOC_TRANSLATIONS[docName]?.[lang] || docName}</h4>
         </div>
         {status === "success" && (
           <div className="bg-green-500 text-white p-1 rounded-full animate-bounce shadow-lg">

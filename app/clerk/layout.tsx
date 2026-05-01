@@ -14,12 +14,30 @@ import {
   ClipboardList,
   Bell
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function ClerkLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Clear any local state if needed (for demo purpose)
+    localStorage.clear();
+    sessionStorage.clear();
+    toast.success("Logging out of PRAGATI...", { duration: 1000 });
+    setTimeout(() => router.push('/login'), 1000);
+  };
+
+  const handleNotificationClick = () => {
+    toast.info("No new notifications", {
+      description: "You are up to date with all exception flags."
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       {/* Red Warning Banner */}
@@ -40,7 +58,7 @@ export default function ClerkLayout({
 
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             <div className="pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Main Menu</div>
-            <Link href="/clerk/dashboard" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <Link href="/clerk/queue" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
               <LayoutDashboard size={18} />
               Dashboard Overview
             </Link>
@@ -70,10 +88,13 @@ export default function ClerkLayout({
                 <p className="text-[10px] text-slate-500 truncate">Senior Clerk (Pune)</p>
               </div>
             </div>
-            <Link href="/" className="flex items-center justify-center gap-2 w-full py-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-red-900/40 rounded-lg transition-all">
+            <button 
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 w-full py-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-red-900/40 rounded-lg transition-all"
+            >
               <LogOut size={14} />
               Sign Out
-            </Link>
+            </button>
           </div>
         </aside>
 
@@ -90,7 +111,7 @@ export default function ClerkLayout({
             </div>
             
             <div className="flex items-center gap-6">
-              <div className="relative group">
+              <div className="relative group" onClick={handleNotificationClick}>
                 <Bell size={20} className="text-slate-400 group-hover:text-slate-900 cursor-pointer transition-colors" />
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] flex items-center justify-center rounded-full border-2 border-white font-bold">3</span>
               </div>

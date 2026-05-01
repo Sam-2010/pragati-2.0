@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { toast } from "sonner";
 
 export default function FarmerDashboardLayout({
   children,
@@ -109,6 +110,29 @@ export default function FarmerDashboardLayout({
             </div>
             {menuItems.map((item) => {
               const isActive = pathname === item.href;
+              const isLocked = item.href === "#" || !["/farmer/dashboard/profile", "/farmer/dashboard/apply", "/farmer/dashboard/bank"].some(p => item.href.startsWith(p));
+              
+              const content = (
+                <>
+                  <span className={`${isActive ? "text-[#1B4332]" : "text-gray-400"}`}>
+                    {item.icon}
+                  </span>
+                  {(isSidebarOpen || !isActive) && <span className="truncate">{item.label[lang]}</span>}
+                </>
+              );
+
+              if (isLocked) {
+                return (
+                  <button
+                    key={item.label.EN}
+                    onClick={() => toast.info("Feature locked for Demo")}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded text-[13px] font-medium transition-all border border-transparent text-gray-400 hover:bg-gray-50 cursor-not-allowed w-full text-left"
+                  >
+                    {content}
+                  </button>
+                );
+              }
+
               return (
                 <Link
                   key={item.label.EN}
@@ -118,10 +142,7 @@ export default function FarmerDashboardLayout({
                       ? "bg-white border-gray-100 shadow-sm text-gray-900 font-bold" 
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
                 >
-                  <span className={`${isActive ? "text-[#1B4332]" : "text-gray-400"}`}>
-                    {item.icon}
-                  </span>
-                  {(isSidebarOpen || !isActive) && <span className="truncate">{item.label[lang]}</span>}
+                  {content}
                 </Link>
               );
             })}
