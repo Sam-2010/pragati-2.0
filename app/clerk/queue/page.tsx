@@ -48,7 +48,7 @@ export default function ClerkQueuePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAiBatchProcessing, setIsAiBatchProcessing] = useState(false);
   const [auditingAppId, setAuditingAppId] = useState<string | null>(null);
-  const [auditResults, setAuditResults] = useState<Record<string, string>>({});
+  const [auditResults, setAuditResults] = useState<Record<string, any>>({});
   
   // Human-in-the-Loop Batch UI state
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -418,16 +418,104 @@ export default function ClerkQueuePage() {
                               <Loader2 size={18} className="animate-spin text-indigo-500" />
                               <p className="text-xs font-medium italic">PRAGATI AI is currently cross-referencing document data with scheme criteria...</p>
                             </div>
-                         ) : (
-                            <div className="text-slate-700 text-sm leading-relaxed font-sans bg-white border border-slate-100 p-4 rounded-lg shadow-inner">
-                              <div className="whitespace-pre-wrap">
-                                {auditResults[app.id]}
+                         ) : auditResults[app.id] && typeof auditResults[app.id] === 'object' ? (
+                            <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-inner">
+                              <div className="bg-slate-50/50 px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${auditResults[app.id].overall_verdict === 'Safe' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Overall Verdict: <span className={auditResults[app.id].overall_verdict === 'Safe' ? 'text-emerald-600' : 'text-red-600'}>
+                                      {auditResults[app.id].overall_verdict}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="p-2 space-y-1">
+                                {auditResults[app.id].document_evaluations?.map((doc: any, idx: number) => (
+                                  <div key={idx} className="group flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                      {doc.status === 'Safe' ? (
+                                        <div className="bg-emerald-100 text-emerald-600 p-1 rounded-full">
+                                          <Check size={12} strokeWidth={3} />
+                                        </div>
+                                      ) : (
+                                        <div className="bg-red-100 text-red-600 p-1 rounded-full">
+                                          <X size={12} strokeWidth={3} />
+                                        </div>
+                                      )}
+                                      <div>
+                                        <p className="text-xs font-bold text-slate-700">{doc.document_name}</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">Status: {doc.status}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      {app.document_urls && app.document_urls[idx] && (
+                                        <a 
+                                          href={app.document_urls[idx]} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
+                                          title="View Document"
+                                        >
+                                          <Eye size={14} />
+                                        </a>
+                                      )}
+                                      
+                                      <div className="relative group/info">
+                                        <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all">
+                                          <Info size={14} />
+                                        </button>
+                                        
+                                        <div className="absolute right-0 bottom-full mb-2 w-64 bg-slate-900 text-white p-3 rounded-xl shadow-xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all z-50 pointer-events-none">
+                                          <div className="space-y-2">
+                                            <div>
+                                              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1">AI Explanation</p>
+                                              <p className="text-[11px] leading-relaxed text-slate-200">{doc.clerk_explanation}</p>
+                                            </div>
+                                            {doc.cross_document_impact && (
+                                              <div className="pt-2 border-t border-white/10">
+                                                <p className="text-[9px] uppercase font-bold text-indigo-400 tracking-widest mb-1">Cross-Document Impact</p>
+                                                <p className="text-[11px] leading-relaxed text-slate-200 italic">{doc.cross_document_impact}</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="absolute -bottom-1 right-3 w-2 h-2 bg-slate-900 rotate-45"></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                         )}
+                         ) : auditResults[app.id] && typeof auditResults[app.id] === 'string' ? (
+                            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                              <div className="flex items-center gap-2 text-amber-800 mb-2">
+                                <AlertTriangle size={16} />
+                                <span className="text-xs font-bold uppercase tracking-wider">Legacy Audit Format</span>
+                              </div>
+                              <p className="text-xs text-amber-700 leading-relaxed mb-3">
+                                This report was generated using the old text-based protocol. To see the new structured visual dashboard, please re-run the audit.
+                              </p>
+                              <button 
+                                onClick={() => {
+                                  setAuditResults(prev => {
+                                    const next = {...prev};
+                                    delete next[app.id];
+                                    return next;
+                                  });
+                                  handleDeepAudit(app.id);
+                                }}
+                                className="px-3 py-1.5 bg-amber-600 text-white text-[10px] font-bold rounded-lg shadow-sm hover:bg-amber-700 transition-all"
+                              >
+                                Re-Audit with New Protocol
+                              </button>
+                            </div>
+                         ) : null}
                          <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-400">
                             <Search size={12} />
-                            <span>Verified by Google Gemini 1.5 Pro | Automated Administrative Audit</span>
+                            <span>Verified by PRAGATI Deep Audit (Gemini 2.5 Flash) | Point-wise Decision Verdict</span>
                          </div>
                       </div>
                     </td>
