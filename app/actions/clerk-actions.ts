@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
+import { sendFarmerEmail } from '@/lib/sendNotification';
 
 // We use the service role key here to bypass RLS for administrative actions in the demo
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -15,13 +16,20 @@ export async function updateApplicationStatus(id: string, status: string, justif
   try {
     const updatePayload: any = { status };
     
+    // Determine action type for audit trail
+    let actionType = 'STATUS_UPDATE';
+    
     if (justification) {
       updatePayload.discrepancy_reason = justification;
       if (justification.startsWith('OVERRIDDEN')) {
         updatePayload.is_manually_overridden = true;
+        actionType = 'MANUAL_OVERRIDE';
+      } else if (justification.startsWith('DIRECT_APPROVAL')) {
+        actionType = 'DIRECT_APPROVAL';
       }
     }
 
+    // 1. Update application status
     const { error } = await supabaseAdmin
       .from('farmer_applications')
       .update(updatePayload)
@@ -29,8 +37,34 @@ export async function updateApplicationStatus(id: string, status: string, justif
 
     if (error) throw error;
 
-    // This invalidates the Next.js cache for the clerk queue
+    // 2. Insert immutable audit log entry
+    const { error: auditError } = await supabaseAdmin
+      .from('audit_logs')
+      .insert({
+        application_id: id,
+        action_taken: actionType,
+        performed_by: 'Clerk_Deshmukh',
+        ip_address: 'demo_session',
+        details: {
+          new_status: status,
+          justification: justification || null,
+          timestamp_ist: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+        }
+      });
+
+    if (auditError) {
+      // Non-blocking: log but don't fail the primary action
+      console.error('Audit log insert failed (non-blocking):', auditError.message);
+    }
+
+    // Invalidate cache for clerk queue and audit views
     revalidatePath('/clerk/queue');
+    revalidatePath('/clerk/audit');
+
+    // 3. Fire-and-forget email notification (NEVER blocks approval)
+    // We pass a generic "Farmer" name since we don't fetch the user profile here,
+    // and we pass the actionType for the status.
+    void sendFarmerEmail("Honored Farmer", actionType).catch(console.error);
     
     return { success: true };
   } catch (error: any) {

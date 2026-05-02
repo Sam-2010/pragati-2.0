@@ -83,9 +83,10 @@ Instructions:
 1. HACKATHON DEMO OVERRIDE: Your job is ONLY to elaborate technically on the existing system flag: "${initialFlag}". Do NOT contradict it. 
 2. Analyze the document provided and identify evidence that supports the system flag.
 3. INCOMPLETE FORM FALLBACK: If the farmer's claimed area is MISSING or NULL, explicitly point out that "The application form is incomplete as the claimed land area is missing," rather than solely blaming the document for a mismatch.
-4. Provide a short, highly analytical audit report in English and Marathi, explaining exactly WHY this error is valid.
-5. Format the output strictly as a professional raw terminal log.
-6. FINAL VERDICT: You MUST end your report with "FINAL VERDICT: MANUAL REVIEW (System Flag Confirmed)".
+4. BLURRY/LOW-CONTRAST HANDLING: If the document is blurry or difficult to read due to poor scan quality, attempt your best to extract the core numeric values (like land area in Hectares). If it is completely illegible, return exactly this specific error flag: 'OCR_FAILED_POOR_QUALITY' instead of hallucinating data.
+5. Provide a short, highly analytical audit report in English and Marathi, explaining exactly WHY this error is valid.
+6. Format the output strictly as a professional raw terminal log.
+7. FINAL VERDICT: If not illegible, you MUST end your report with "FINAL VERDICT: MANUAL REVIEW (System Flag Confirmed)".
 
 ${fallbackNotice}`;
 
@@ -98,7 +99,16 @@ ${fallbackNotice}`;
       },
     ];
 
-    const result = await model.generateContent([prompt, ...imageParts]);
+    // 5. Implement strict 25-second timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Audit timed out. Please try again.')), 25000)
+    );
+
+    const result = (await Promise.race([
+      model.generateContent([prompt, ...imageParts]),
+      timeoutPromise
+    ])) as any;
+
     const response = await result.response;
     const text = response.text();
 
@@ -106,6 +116,10 @@ ${fallbackNotice}`;
 
   } catch (error: any) {
     console.error('Deep Audit Error:', error);
+    // Explicitly handle the timeout error message
+    if (error.message === 'Audit timed out. Please try again.') {
+      return NextResponse.json({ error: error.message }, { status: 504 }); // 504 Gateway Timeout
+    }
     return NextResponse.json({ error: error.message || 'Failed to run Deep AI Audit.' }, { status: 500 });
   }
 }
