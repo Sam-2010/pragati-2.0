@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     // 2. Fetch ALL documents from the record
     const documentUrls = (app.document_urls || []) as string[];
     const processedDocuments: { buffer: Buffer, mimeType: string, url: string }[] = [];
-    isMockFallback = documentUrls.length === 0;
+    let isMockFallback = documentUrls.length === 0;
 
     if (!isMockFallback) {
       for (const url of documentUrls) {
