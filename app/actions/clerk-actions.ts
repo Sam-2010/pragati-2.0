@@ -99,7 +99,7 @@ export async function executeBulkRouting(decisions: { id: string, status: string
       performed_by: 'Clerk_Deshmukh',
       ip_address: 'demo_session',
       details: {
-        processed_count: updates.length,
+        processed_count: decisions.length,
         timestamp_ist: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
       }
     });
