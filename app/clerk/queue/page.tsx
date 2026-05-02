@@ -22,7 +22,8 @@ import {
   Search,
   Loader2,
   Microscope,
-  Check
+  Check,
+  Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,7 +61,7 @@ export default function ClerkQueuePage() {
       const { data, error } = await supabase
         .from('farmer_applications')
         .select('*')
-        .eq('status', 'Action_Required')
+        .in('status', ['Action_Required', 'Pending'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -275,12 +276,21 @@ export default function ClerkQueuePage() {
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <div className="bg-red-50 border border-red-100 p-2.5 rounded-lg flex items-start gap-2.5 max-w-md">
-                      <ShieldAlert size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-[11px] font-medium text-red-900 leading-relaxed">
-                        {app.discrepancy_reason || "Unspecified AI Discrepancy"}
-                      </p>
-                    </div>
+                    {app.status === 'Pending' ? (
+                      <div className="bg-amber-50 border border-amber-100 p-2.5 rounded-lg flex items-start gap-2.5 max-w-md">
+                        <Clock size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-[11px] font-medium text-amber-800 leading-relaxed">
+                          Awaiting AI Batch Processing — Run &quot;Trigger AI Batch Processor&quot; to classify this application.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-red-50 border border-red-100 p-2.5 rounded-lg flex items-start gap-2.5 max-w-md">
+                        <ShieldAlert size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-[11px] font-medium text-red-900 leading-relaxed">
+                          {app.discrepancy_reason || "Unspecified AI Discrepancy"}
+                        </p>
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-5 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-2">

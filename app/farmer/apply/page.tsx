@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useActionState, useEffect } from "react";
 import { 
   Home, 
   HelpCircle, 
@@ -11,32 +11,106 @@ import {
   Smartphone,
   Upload,
   CheckCircle2,
-  Menu,
-  X
+  Loader2,
+  FileCheck,
+  ArrowRight,
+  Sparkles
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+import { submitFarmerApplication } from "@/app/actions/farmer-actions";
 
 export default function FarmerPortal() {
   const [language, setLanguage] = useState("Marathi");
   const [loginType, setLoginType] = useState("individual");
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoggingIn(true);
-    // Simulate API call
-    setTimeout(() => {
-      toast.success("Login Successful!");
-      window.location.href = "/farmer/dashboard/profile";
-    }, 1200);
-  };
+  const [state, formAction, isPending] = useActionState(submitFarmerApplication, null);
+
+  // Toast feedback on state change
+  useEffect(() => {
+    if (state?.success) {
+      toast.success(language === "Marathi" ? "अर्ज यशस्वीरित्या सादर!" : "Application Submitted Successfully!", {
+        description: `Application ID: ${state.applicationId}`,
+        icon: <CheckCircle2 className="text-emerald-500" />,
+        duration: 8000,
+      });
+    }
+    if (state?.error) {
+      toast.error(state.error);
+    }
+  }, [state]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
-      console.log(acceptedFiles);
-    }
+      setUploadedFiles(acceptedFiles);
+      toast.success(`${acceptedFiles.length} file(s) attached`);
+    },
+    accept: { 'image/*': [], 'application/pdf': [] },
+    maxFiles: 3,
   });
+
+  // SUCCESS STATE — full-page acknowledgment
+  if (state?.success) {
+    return (
+      <div className="min-h-screen bg-[#f7f9fb] font-sans flex flex-col">
+        <div className="bg-[#B91C1C] text-white py-2 px-4 text-center text-xs font-bold tracking-wider z-[9999] fixed top-0 w-full shadow-md">
+          DEMO ENVIRONMENT ONLY - FOR PRAGATI AI HACKATHON TESTING. NOT AN OFFICIAL GOVERNMENT WEBSITE.
+        </div>
+        <div className="h-8"></div>
+
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-10 md:p-16 max-w-xl w-full text-center">
+            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-emerald-100">
+              <FileCheck className="h-10 w-10 text-emerald-600" />
+            </div>
+            <h2 className="text-3xl font-serif font-bold text-[#1B4332] mb-2">
+              {language === "Marathi" ? "अर्ज यशस्वीरित्या सादर!" : "Application Submitted!"}
+            </h2>
+            <p className="text-gray-500 mb-8">
+              {language === "Marathi"
+                ? "तुमचा अर्ज PRAGATI AI प्रणालीमध्ये नोंदणीकृत झाला आहे."
+                : "Your application has been registered in the PRAGATI AI system."}
+            </p>
+
+            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 text-left space-y-4 mb-8">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 uppercase">Application ID</span>
+                <span className="text-sm font-mono font-bold text-slate-900">{state.applicationId?.slice(0, 8)}...</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 uppercase">Farmer ID</span>
+                <span className="text-sm font-mono font-bold text-slate-900">{state.farmerId}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 uppercase">Status</span>
+                <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                  ⏳ Pending AI Verification
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100 flex items-start gap-3 text-left mb-8">
+              <Sparkles className="h-5 w-5 text-indigo-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-indigo-700 leading-relaxed">
+                {language === "Marathi"
+                  ? "तुमचा अर्ज आता PRAGATI AI इंजिनद्वारे स्वयंचलित तपासणीसाठी रांगेत आहे. तपासणीनंतर तो तालुका कार्यालयात पाठवला जाईल."
+                  : "Your application is now queued for automated verification by the PRAGATI AI Engine. After processing, it will be routed to the Taluka office."}
+              </p>
+            </div>
+
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-[#1B4332] text-white px-8 py-3.5 rounded-xl font-bold text-sm hover:bg-[#274e3d] transition-all shadow-lg hover:shadow-xl flex items-center gap-2 mx-auto"
+            >
+              {language === "Marathi" ? "नवीन अर्ज भरा" : "Submit Another Application"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f9fb] font-sans flex flex-col">
@@ -113,13 +187,7 @@ export default function FarmerPortal() {
               {language === "Marathi" ? "त्वरित दुवे" : "Quick Links"}
             </div>
             <div className="p-2 flex flex-col gap-1">
-              <button 
-                onClick={handleLogin}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-[#f2f4f6] text-[#1B4332] font-bold w-full text-left"
-              >
-                <Home className="h-4 w-4" />
-                {language === "Marathi" ? "अर्जदार लॉगिन" : "Applicant Login"}
-              </button>
+              <SidebarLink icon={<Home className="h-4 w-4" />} label={language === "Marathi" ? "अर्जदार लॉगिन" : "Applicant Login"} active />
               <SidebarLink icon={<MessageSquare className="h-4 w-4" />} label={language === "Marathi" ? "तक्रार / सूचना" : "Complaint / Suggestion"} />
               <SidebarLink icon={<BookOpen className="h-4 w-4" />} label={language === "Marathi" ? "वापरकर्ता पुस्तिका" : "User Manual"} />
               <SidebarLink icon={<HelpCircle className="h-4 w-4" />} label={language === "Marathi" ? "नेहमीचे प्रश्न" : "Frequently Asked Questions"} />
@@ -170,22 +238,40 @@ export default function FarmerPortal() {
             />
           </div>
 
-          <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form action={formAction} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormInput 
+              name="farmerName"
               label={language === "Marathi" ? "शेतकऱ्याचे नाव" : "Farmer Name"} 
-              placeholder={language === "Marathi" ? "पूर्ण नाव प्रविष्ट करा" : "Enter full name"} 
+              placeholder={language === "Marathi" ? "पूर्ण नाव प्रविष्ट करा" : "Enter full name"}
+              required
             />
             <FormInput 
+              name="aadhaarNumber"
               label={language === "Marathi" ? "आधार क्रमांक" : "Aadhaar Number"} 
-              placeholder="XXXX XXXX XXXX" 
+              placeholder="XXXX XXXX XXXX"
+              required
             />
             <FormInput 
+              name="surveyNumber"
               label={language === "Marathi" ? "सर्वेक्षण क्रमांक" : "Survey No."} 
               placeholder={language === "Marathi" ? "सर्वेक्षण क्रमांक टाका" : "Enter Survey Number"} 
             />
             <FormInput 
+              name="district"
               label={language === "Marathi" ? "जिल्हा" : "District"} 
-              placeholder={language === "Marathi" ? "जिल्हा निवडा" : "Select District"} 
+              placeholder={language === "Marathi" ? "जिल्हा निवडा" : "Select District"}
+              required
+            />
+            <FormInput 
+              name="taluka"
+              label={language === "Marathi" ? "तालुका" : "Taluka"} 
+              placeholder={language === "Marathi" ? "तालुका प्रविष्ट करा" : "Enter Taluka"} 
+            />
+            <FormInput 
+              name="schemeName"
+              label={language === "Marathi" ? "योजनेचे नाव" : "Scheme Name"} 
+              placeholder="Namo Shetkari Mahasanman Nidhi"
+              defaultValue="Namo Shetkari Mahasanman Nidhi"
             />
 
             <div className="md:col-span-2 mt-4">
@@ -201,28 +287,42 @@ export default function FarmerPortal() {
                 <div className="h-16 w-16 bg-[#1B4332]/10 rounded-full flex items-center justify-center mb-4">
                   <Upload className="h-8 w-8 text-[#1B4332]" />
                 </div>
-                <p className="text-sm font-bold text-gray-700">
-                  {language === "Marathi" ? "येथे फायली ड्रॅग आणि ड्रॉप करा" : "Drag and Drop files here"}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {language === "Marathi" ? "किंवा ब्राउझ करण्यासाठी टॅप करा (PDF, JPG - Max 5MB)" : "or Tap to Browse (PDF, JPG - Max 5MB)"}
-                </p>
+                {uploadedFiles.length > 0 ? (
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-emerald-600 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {uploadedFiles.length} file(s) attached
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {uploadedFiles.map(f => f.name).join(', ')}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-gray-700">
+                      {language === "Marathi" ? "येथे फायली ड्रॅग आणि ड्रॉप करा" : "Drag and Drop files here"}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {language === "Marathi" ? "किंवा ब्राउझ करण्यासाठी टॅप करा (PDF, JPG - Max 5MB)" : "or Tap to Browse (PDF, JPG - Max 5MB)"}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="md:col-span-2 flex justify-end mt-4">
               <button 
-                onClick={handleLogin}
-                disabled={isLoggingIn}
+                type="submit"
+                disabled={isPending}
                 className="bg-[#1B4332] text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-[#274e3d] transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-70 disabled:cursor-wait flex items-center gap-3"
               >
-                {isLoggingIn ? (
+                {isPending ? (
                   <>
-                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {language === "Marathi" ? "लॉगिन करत आहे..." : "Logging in..."}
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    {language === "Marathi" ? "सादर करत आहे..." : "Submitting..."}
                   </>
                 ) : (
-                  language === "Marathi" ? "लॉगिन / अर्ज करा" : "Login / Apply"
+                  language === "Marathi" ? "अर्ज सादर करा" : "Submit Application"
                 )}
               </button>
             </div>
@@ -308,7 +408,7 @@ export default function FarmerPortal() {
   );
 }
 
-function SidebarLink({ icon, label, active = false }) {
+function SidebarLink({ icon, label, active = false }: { icon: React.ReactNode; label: string; active?: boolean }) {
   return (
     <a 
       href="#" 
@@ -323,9 +423,10 @@ function SidebarLink({ icon, label, active = false }) {
   );
 }
 
-function RadioButton({ label, selected, onClick }) {
+function RadioButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
     <button 
+      type="button"
       onClick={onClick}
       className="flex items-center gap-3 group cursor-pointer"
     >
@@ -341,13 +442,24 @@ function RadioButton({ label, selected, onClick }) {
   );
 }
 
-function FormInput({ label, placeholder }) {
+function FormInput({ name, label, placeholder, required = false, defaultValue }: { 
+  name: string; 
+  label: string; 
+  placeholder: string; 
+  required?: boolean;
+  defaultValue?: string;
+}) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-bold text-gray-700">{label}</label>
+      <label className="text-sm font-bold text-gray-700">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
       <input 
+        name={name}
         type="text" 
         placeholder={placeholder}
+        required={required}
+        defaultValue={defaultValue}
         className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332] transition-all text-sm"
       />
     </div>
