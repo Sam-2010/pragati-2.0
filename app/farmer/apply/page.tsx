@@ -24,12 +24,15 @@ export default function FarmerPortal() {
   const [language, setLanguage] = useState("Marathi");
   const [loginType, setLoginType] = useState("individual");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isSuccessAcknowledged, setIsSuccessAcknowledged] = useState(false);
+  const [formIteration, setFormIteration] = useState(0);
 
   const [state, formAction, isPending] = useActionState(submitFarmerApplication, null);
 
   // Toast feedback on state change
   useEffect(() => {
     if (state?.success) {
+      setIsSuccessAcknowledged(false); // Reset the acknowledgment when a new success arrives
       toast.success(language === "Marathi" ? "अर्ज यशस्वीरित्या सादर!" : "Application Submitted Successfully!", {
         description: `Application ID: ${state.applicationId}`,
         icon: <CheckCircle2 className="text-emerald-500" />,
@@ -51,7 +54,7 @@ export default function FarmerPortal() {
   });
 
   // SUCCESS STATE — full-page acknowledgment
-  if (state?.success) {
+  if (state?.success && !isSuccessAcknowledged) {
     return (
       <div className="min-h-screen bg-[#f7f9fb] font-sans flex flex-col">
         <div className="bg-[#B91C1C] text-white py-2 px-4 text-center text-xs font-bold tracking-wider z-[9999] fixed top-0 w-full shadow-md">
@@ -100,7 +103,11 @@ export default function FarmerPortal() {
             </div>
 
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                setIsSuccessAcknowledged(true);
+                setUploadedFiles([]);
+                setFormIteration(prev => prev + 1);
+              }}
               className="bg-[#1B4332] text-white px-8 py-3.5 rounded-xl font-bold text-sm hover:bg-[#274e3d] transition-all shadow-lg hover:shadow-xl flex items-center gap-2 mx-auto"
             >
               {language === "Marathi" ? "नवीन अर्ज भरा" : "Submit Another Application"}
@@ -238,7 +245,11 @@ export default function FarmerPortal() {
             />
           </div>
 
-          <form action={formAction} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form 
+            key={formIteration}
+            action={formAction} 
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          >
             <FormInput 
               name="farmerName"
               label={language === "Marathi" ? "शेतकऱ्याचे नाव" : "Farmer Name"} 
