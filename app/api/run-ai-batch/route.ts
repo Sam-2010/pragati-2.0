@@ -41,50 +41,37 @@ async function runAIBatch() {
     let routedToClerk = 0;
     
     // 2. Simulate AI Processing & Prepare batch updates
-    const updates = pendingApps.map((app) => {
-      // 70% chance of passing AI verification perfectly (Realistic AI behavior)
+    const evaluations = pendingApps.map((app) => {
+      // 70% chance of passing AI verification perfectly
       const isPerfectMatch = Math.random() > 0.3;
 
       if (isPerfectMatch) {
         routedToOfficer++;
         return {
-          id: app.id,
-          scheme_id: app.scheme_id, 
-          scheme_name: app.scheme_name, // Include required fields for successful upsert
-          status: 'Verified_by_AI',
+          ...app,
+          verdict: 'Safe to pass & no suspicion',
+          proposed_status: 'Verified_by_AI',
           discrepancy_reason: null,
-          is_manually_overridden: false
         };
       } else {
         routedToClerk++;
-        // Pick a random realistic reason
         const randomReason = DISCREPANCY_REASONS[Math.floor(Math.random() * DISCREPANCY_REASONS.length)];
         return {
-          id: app.id,
-          scheme_id: app.scheme_id, 
-          scheme_name: app.scheme_name, // Include required fields for successful upsert
-          status: 'Action_Required',
+          ...app,
+          verdict: Math.random() > 0.5 ? 'Needs manual supervision' : 'Risky and suspicious',
+          proposed_status: 'Action_Required',
           discrepancy_reason: randomReason,
-          is_manually_overridden: false
         };
       }
     });
 
-    // 3. Perform Bulk Upsert
-    // Upsert with ID acts as an efficient bulk update for existing records
-    const { error: updateError } = await supabaseAdmin
-      .from('farmer_applications')
-      .upsert(updates, { onConflict: 'id' });
-
-    if (updateError) {
-      throw new Error(`Database update error: ${updateError.message}`);
-    }
-
+    // Instead of upserting, return the evaluations for the Human-in-the-Loop modal
     return NextResponse.json({
-      message: "AI Batch Processing Complete",
-      processed_count: updates.length,
+      message: "AI Batch Processing Complete. Awaiting Human Review.",
+      processed_count: evaluations.length,
       routed_to_officer: routedToOfficer,
       routed_to_clerk: routedToClerk,
+      evaluations,
       timestamp: new Date().toISOString()
     }, { status: 200 });
 

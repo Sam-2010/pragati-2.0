@@ -72,3 +72,40 @@ export async function updateApplicationStatus(id: string, status: string, justif
     return { success: false, error: error.message };
   }
 }
+
+export async function executeBulkRouting(decisions: { id: string, status: string, reason?: string | null }[]) {
+  try {
+    const updates = decisions.map(d => ({
+      id: d.id,
+      status: d.status,
+      discrepancy_reason: d.reason || null,
+      is_manually_overridden: d.status === 'Verified_by_Clerk' ? true : false,
+    }));
+
+    // Upsert the decisions
+    const { error } = await supabaseAdmin
+      .from('farmer_applications')
+      .upsert(updates, { onConflict: 'id' });
+
+    if (error) throw error;
+
+    // Log the bulk action (optional, but good for demo)
+    await supabaseAdmin.from('audit_logs').insert({
+      action_taken: 'BULK_ROUTING',
+      performed_by: 'Clerk_Deshmukh',
+      ip_address: 'demo_session',
+      details: {
+        processed_count: updates.length,
+        timestamp_ist: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+      }
+    });
+
+    revalidatePath('/clerk/queue');
+    revalidatePath('/tao/dashboard');
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Bulk Routing Error:', error);
+    return { success: false, error: error.message };
+  }
+}
