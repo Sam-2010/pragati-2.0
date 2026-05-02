@@ -68,12 +68,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // Final check: if no documents were successfully processed but URLs existed, we still might be in fallback mode
+    // Final check: if no documents were successfully processed
     if (processedDocuments.length === 0 && !isMockFallback) {
       isMockFallback = true;
     }
 
-    // 3. Initialize Gemini 2.5 Flash with JSON output mode
+    // 3. Initialize Gemini 1.5 Flash with JSON output mode
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-1.5-flash',
@@ -82,41 +82,72 @@ export async function POST(req: Request) {
       }
     });
 
-    // 4. Construct the prompt - Strict JSON Schema for UI rendering
+    // 4. Construct the prompt — Region-aware, deterministic, 3-tier verdict system
     const initialFlag = app.discrepancy_reason || "Possible data mismatch or OCR ambiguity";
     const claimedArea = app.land_area || app.land_size_ha || null;
     
-    const prompt = `You are an expert Maharashtrian agricultural auditor and fraud-detection AI. 
-Analyze the provided documents (7/12 extract, 8A holding, and Aadhaar) against the farmer's application.
-Scheme: "${app.scheme_name || 'Agricultural Subsidy'}".
-Claimed Land Area: ${claimedArea ? `${claimedArea} Hectares` : 'MISSING'}.
-SYSTEM ALERT (Initial Flag): "${initialFlag}".
+    const prompt = `You are a senior Maharashtrian agricultural document auditor working for the Maharashtra state government.
 
-TASK:
-Provide a decisive, point-wise audit verdict. 
-If this is a SEEDED DEMO RECORD (no physical documents provided), SIMULATE a realistic audit of the following three standard documents based on the initial system flag:
+CRITICAL CONTEXT — MAHARASHTRA REGIONAL DOCUMENTS:
+You are auditing documents that originate from the Maharashtra state land revenue system.
+These documents are COMMONLY written in Marathi (Devanagari script) and follow Maharashtra-specific formats:
+
+1. **7/12 Extract (सातबारा उतारा / Satbara Utara):**
+   - This is the primary land ownership record in Maharashtra.
+   - It contains: Survey Number (गट क्रमांक), Owner Name (खातेदाराचे नाव), Total Area (एकूण क्षेत्र), Village (गाव), Taluka, District.
+   - It is ALWAYS in Marathi. Do NOT reject it for being in Marathi or lacking English headers.
+   - Common variations: handwritten entries, stamps, digital printouts from MahaLandRecord portal.
+
+2. **8A Holding Document (८अ उतारा):**
+   - This shows the cultivator's (कब्जेदार) holding details extracted from village records.
+   - It lists: Holding Area, Survey Numbers linked, and cultivator classification.
+   - It is ALWAYS in Marathi and may have pre-printed government letterhead.
+   - Minor area differences (±0.5 Ha) between 7/12 and 8A are NORMAL due to survey rounding.
+
+3. **Aadhaar Card:**
+   - Standard Indian national ID. Usually bilingual (Hindi/English or Marathi/English).
+   - Name spelling variations between Aadhaar and land records are VERY COMMON in rural Maharashtra (transliteration differences).
+
+SCHEME UNDER AUDIT: "${app.scheme_name || 'Agricultural Subsidy'}".
+FARMER ID: ${app.farmer_id || 'Unknown'}.
+CLAIMED LAND AREA: ${claimedArea ? `${claimedArea} Hectares` : 'MISSING — flag this'}.
+SYSTEM FLAG (reason for routing to clerk): "${initialFlag}".
+
+YOUR TASK:
+Audit each document and provide a verdict using a **THREE-TIER status system**:
+- **"Safe"** → Document is valid, data matches, no concerns.
+- **"Manual_Review"** → Document is ambiguous, partially readable, or has minor discrepancies that a human clerk should verify physically. This is NOT a rejection — it means "needs a human eye".
+- **"Suspicious"** → Clear evidence of fraud, forgery, or major data conflict (e.g., completely different names, impossible land areas, tampered documents).
+
+ANTI-BIAS RULES:
+- Do NOT mark a document as "Suspicious" just because it is in Marathi or uses Devanagari script.
+- Do NOT mark a document as "Suspicious" just because OCR quality is low — use "Manual_Review" instead.
+- Minor name spelling variations (e.g., "Vitthal" vs "Vithhal") are NORMAL — mark as "Safe" with a note.
+- Minor area differences (±0.5 Ha) between 7/12 and 8A are NORMAL — mark as "Safe" with a note.
+- Only use "Suspicious" when there is CLEAR conflicting data that cannot be explained by transliteration or rounding.
+
+${isMockFallback ? `
+NOTE: This is a SEEDED DEMO RECORD with no physical documents uploaded.
+SIMULATE a realistic audit for these three standard documents:
 1. 7/12 Extract (Satbara Utara)
-2. 8A Holding Document
+2. 8A Holding Document  
 3. Aadhaar Card
+Base your simulation on the system flag: "${initialFlag}".
+For demo purposes, make at least one document "Safe", and use "Manual_Review" for ambiguous cases rather than "Suspicious".
+` : ''}
 
-STRICT OUTPUT SCHEMA:
+STRICT OUTPUT JSON SCHEMA (return ONLY this, no extra text):
 {
   "overall_verdict": "Safe" | "Action_Required",
   "document_evaluations": [
     {
-      "document_name": string (e.g. "7/12 Extract", "Aadhaar Card"),
-      "status": "Safe" | "Suspicious",
-      "clerk_explanation": string (1-2 simple sentences in plain English/Marathi for the clerk),
-      "cross_document_impact": string (how this issue invalidates or affects other documents in the set)
+      "document_name": string,
+      "status": "Safe" | "Manual_Review" | "Suspicious",
+      "clerk_explanation": string (1-2 plain sentences for a non-technical clerk),
+      "cross_document_impact": string (how this finding affects other documents)
     }
   ]
-}
-
-INSTRUCTIONS:
-- If a document is missing, mark it as "Suspicious" with explanation "Document not found in record".
-- If the system flag is "${initialFlag}", ensure your verdict elaborates on WHY this is correct.
-- Be decisive. Use Green/Red logic in your evaluations.
-${isMockFallback ? "\nNOTE: This is a DEMO record. Simulate the evaluation for the standard documents listed above based on the system alert." : ""}`;
+}`;
 
     const promptParts: any[] = [prompt];
     processedDocuments.forEach(doc => {
@@ -128,9 +159,9 @@ ${isMockFallback ? "\nNOTE: This is a DEMO record. Simulate the evaluation for t
       });
     });
 
-    // 5. Implement strict 25-second timeout
+    // 5. Implement strict 30-second timeout
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Audit timed out. Please try again.')), 25000)
+      setTimeout(() => reject(new Error('Audit timed out. Please try again.')), 30000)
     );
 
     const result = (await Promise.race([
@@ -159,9 +190,9 @@ ${isMockFallback ? "\nNOTE: This is a DEMO record. Simulate the evaluation for t
         document_evaluations: [
           {
             document_name: "Audit System Error",
-            status: "Suspicious",
-            clerk_explanation: "The AI audit returned an unparseable response. Please check the raw logs or retry.",
-            cross_document_impact: "System reliability alert."
+            status: "Manual_Review",
+            clerk_explanation: "The AI audit returned an unparseable response. Please retry or check the raw logs.",
+            cross_document_impact: "System reliability alert — other evaluations may be affected."
           }
         ]
       };
@@ -177,33 +208,31 @@ ${isMockFallback ? "\nNOTE: This is a DEMO record. Simulate the evaluation for t
     console.error('Deep Audit Error:', error);
 
     // CRITICAL: Handle Quota (429) or other API failures with a "Smart Mock Fallback"
-    // This ensures the DEMO NEVER CRASHES even if the API hits limits.
     const isQuotaExceeded = error.message?.includes('429') || error.message?.includes('quota');
     
     if (isQuotaExceeded || error.message?.includes('fetch')) {
       console.warn("[Deep Audit] API Quota Hit or Fetch Failed. Activating Deterministic Mock Audit...");
       
-      // We'll generate a realistic mock based on what we know about the record
       const mockAudit = {
         overall_verdict: "Action_Required",
         document_evaluations: [
           {
-            document_name: "7/12 Extract (Satbara)",
-            status: "Suspicious",
-            clerk_explanation: "Land survey number matches but owner name discrepancy detected in OCR scan. Requires manual Aadhaar cross-verification.",
-            cross_document_impact: "Invalidates the primary land claim until holding is clarified."
+            document_name: "7/12 Extract (Satbara Utara)",
+            status: "Manual_Review",
+            clerk_explanation: "गट क्रमांक (Survey Number) matches but owner name has a minor transliteration difference. Likely safe but needs clerk confirmation.",
+            cross_document_impact: "If owner name mismatch is confirmed, 8A holding validity is also affected."
           },
           {
             document_name: "Aadhaar Card",
             status: "Safe",
-            clerk_explanation: "Identity verified. Facial features in document match the system database profile.",
-            cross_document_impact: "Confirms identity but does not resolve land ownership mismatch."
+            clerk_explanation: "Identity verified. Name and DOB match the farmer profile in the system database.",
+            cross_document_impact: "Confirms identity — does not affect land document validity."
           },
           {
             document_name: "8A Holding Document",
-            status: "Suspicious",
-            clerk_explanation: "Total land area (Hectares) differs from the 7/12 extract by 0.45ha. Possible data entry error or outdated record.",
-            cross_document_impact: "Directly conflicts with 7/12 extract; both must be re-submitted."
+            status: "Manual_Review",
+            clerk_explanation: "Holding area differs from 7/12 by 0.3 Ha which is within normal survey rounding limits, but flagged for caution.",
+            cross_document_impact: "Minor discrepancy — cross-reference with latest talathi records recommended."
           }
         ]
       };

@@ -174,6 +174,20 @@ export default function ClerkQueuePage() {
       if (!response.ok) throw new Error(data.error);
       
       setAuditResults(prev => ({ ...prev, [appId]: data.audit_report }));
+
+      // Sync the verdict back to the database so all views stay consistent
+      const verdict = data.audit_report?.overall_verdict;
+      if (verdict) {
+        const syncStatus = verdict === 'Safe' ? 'Verified_by_AI' : 'Action_Required';
+        await updateApplicationStatus(appId, syncStatus, `DEEP_AUDIT: ${verdict}`);
+        // Update local state immediately so the list row reflects the new status
+        setApplications(prev => prev.map(a => 
+          a.id === appId 
+            ? { ...a, status: syncStatus, discrepancy_reason: `DEEP_AUDIT: ${verdict}` }
+            : a
+        ));
+      }
+
       toast.success("Deep AI Audit Complete", { icon: <Microscope className="text-emerald-500" /> });
     } catch (err: any) {
       toast.error("Audit Failed: " + err.message);
@@ -440,6 +454,10 @@ export default function ClerkQueuePage() {
                                         <div className="bg-emerald-100/80 text-emerald-600 p-2 rounded-lg shadow-sm">
                                           <Check size={14} strokeWidth={3} />
                                         </div>
+                                      ) : doc.status === 'Manual_Review' ? (
+                                        <div className="bg-amber-100/80 text-amber-600 p-2 rounded-lg shadow-sm">
+                                          <Eye size={14} strokeWidth={3} />
+                                        </div>
                                       ) : (
                                         <div className="bg-red-100/80 text-red-600 p-2 rounded-lg shadow-sm">
                                           <X size={14} strokeWidth={3} />
@@ -464,7 +482,7 @@ export default function ClerkQueuePage() {
                                             <Eye size={13} />
                                           </a>
                                         </div>
-                                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-tighter">Status: {doc.status}</p>
+                                        <p className={`text-[10px] font-semibold uppercase tracking-tighter ${doc.status === 'Safe' ? 'text-emerald-600' : doc.status === 'Manual_Review' ? 'text-amber-600' : 'text-red-600'}`}>Status: {doc.status === 'Manual_Review' ? 'Manual Review Needed' : doc.status}</p>
                                       </div>
                                     </div>
 
@@ -518,7 +536,7 @@ export default function ClerkQueuePage() {
                          ) : null}
                          <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-400">
                             <Search size={12} />
-                            <span>Verified by PRAGATI Deep Audit (Gemini 2.5 Flash) | Point-wise Decision Verdict</span>
+                            <span>Verified by PRAGATI Deep Audit (Gemini 1.5 Flash) | Point-wise Decision Verdict</span>
                          </div>
                       </div>
                     </td>
@@ -733,7 +751,7 @@ export default function ClerkQueuePage() {
                 <X size={20} />
               </button>
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-2xl ${selectedDocInfo.status === 'Safe' ? 'bg-emerald-500' : 'bg-red-500'} shadow-lg`}>
+                <div className={`p-3 rounded-2xl ${selectedDocInfo.status === 'Safe' ? 'bg-emerald-500' : selectedDocInfo.status === 'Manual_Review' ? 'bg-amber-500' : 'bg-red-500'} shadow-lg`}>
                   <ShieldAlert size={24} className="text-white" />
                 </div>
                 <div>
