@@ -12,7 +12,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-export async function updateApplicationStatus(id: string, status: string, justification?: string) {
+export async function updateApplicationStatus(applicationId: string, status: string, justification?: string) {
   try {
     const updatePayload: any = { status };
     
@@ -29,11 +29,11 @@ export async function updateApplicationStatus(id: string, status: string, justif
       }
     }
 
-    // 1. Update application status
+    // 1. STRICT UPDATE: Ensure we strictly update and NEVER upsert/insert the application
     const { error } = await supabaseAdmin
       .from('farmer_applications')
       .update(updatePayload)
-      .eq('id', id);
+      .eq('id', applicationId);
 
     if (error) throw error;
 
@@ -41,7 +41,7 @@ export async function updateApplicationStatus(id: string, status: string, justif
     const { error: auditError } = await supabaseAdmin
       .from('audit_logs')
       .insert({
-        application_id: id,
+        application_id: applicationId,
         action_taken: actionType,
         performed_by: 'Clerk_Deshmukh',
         ip_address: 'demo_session',

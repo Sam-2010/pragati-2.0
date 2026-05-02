@@ -202,9 +202,10 @@ export default function ClerkQueuePage() {
     }
 
     setIsProcessing(true);
+    const applicationId = selectedApp.id;
     try {
       const result = await updateApplicationStatus(
-        selectedApp.id, 
+        applicationId, 
         'Verified_by_Clerk', 
         `OVERRIDDEN: ${overrideJustification}`
       );
@@ -212,14 +213,14 @@ export default function ClerkQueuePage() {
       if (!result.success) throw new Error(result.error);
 
       toast.success("AI Flag Overridden", {
-        description: `Application ${selectedApp.id} approved. Taluka Officer (TAO) has been alerted of this manual override.`,
+        description: `Application ${applicationId} approved. Taluka Officer (TAO) has been alerted of this manual override.`,
         className: "bg-red-50 border-red-200 text-red-900"
       });
 
-      // Update local state to remove item from queue
-      setApplications(prev => prev.filter(a => a.id !== selectedApp.id));
+      // Update local state to strictly remove item from queue
+      setApplications(prev => prev.filter(a => a.id !== applicationId));
       setShowOverrideModal(false);
-      router.refresh();
+      // router.refresh() removed to prevent Server Component race conditions duplicating state
     } catch (err: any) {
       toast.error("Override failed: " + err.message);
     } finally {
@@ -232,9 +233,10 @@ export default function ClerkQueuePage() {
     if (!confirmApprove) return;
 
     setIsProcessing(true);
+    const applicationId = app.id;
     try {
       const result = await updateApplicationStatus(
-        app.id, 
+        applicationId, 
         'Verified_by_Clerk', 
         'DIRECT_APPROVAL: Verified by Clerk visually'
       );
@@ -246,8 +248,10 @@ export default function ClerkQueuePage() {
         icon: <CheckCircle2 className="text-emerald-500" />
       });
 
-      setApplications(prev => prev.filter(a => a.id !== app.id));
-      router.refresh();
+      // Strictly filter out the approved application
+      setApplications(prev => prev.filter(a => a.id !== applicationId));
+      // router.refresh() removed to prevent Server Component race conditions duplicating state
+
     } catch (err: any) {
       toast.error("Approval failed: " + err.message);
     } finally {

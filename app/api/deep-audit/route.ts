@@ -36,47 +36,60 @@ export async function POST(req: Request) {
     let documentUrl = '';
     let isMockFallback = false;
 
-    // Defensive check: If simulated data lacks URLs, use a realistic fallback 7/12 image to prevent demo crashes
     if (!app.document_urls || app.document_urls.length === 0) {
       isMockFallback = true;
-      documentUrl = 'https://upload.wikimedia.org/wikipedia/commons/e/e0/7-12_Extract_Sample.jpg'; // Public domain sample or fallback
     } else {
       documentUrl = app.document_urls[0];
+      // Handle cases where the URL is empty or invalid string
+      if (!documentUrl || typeof documentUrl !== 'string' || !documentUrl.startsWith('http')) {
+        isMockFallback = true;
+      }
     }
 
-    // 2. Fetch the actual file from the URL to pass to Gemini
-    const fileResponse = await fetch(documentUrl);
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to fetch document from storage: ${fileResponse.statusText}`);
+    let finalBuffer: Buffer | null = null;
+    let mimeType = 'application/pdf';
+
+    if (!isMockFallback && documentUrl) {
+      try {
+        // 2. Fetch the actual file from the URL to pass to Gemini
+        const fileResponse = await fetch(documentUrl);
+        
+        if (!fileResponse.ok) {
+          console.warn(`[Deep Audit] Failed to fetch document from storage (${fileResponse.status}). Falling back to text-only mode.`);
+          isMockFallback = true;
+        } else {
+          const arrayBuffer = await fileResponse.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          
+          // Guess MIME type
+          mimeType = fileResponse.headers.get('content-type') || 'application/pdf';
+          
+          // PREPROCESS WITH SHARP for "Wow Factor" OCR reliability
+          finalBuffer = buffer;
+          if (!mimeType.includes('pdf')) {
+            finalBuffer = await sharp(buffer)
+              .grayscale()
+              .normalize()
+              .resize({ width: 1600, withoutEnlargement: true })
+              .webp({ quality: 85 })
+              .toBuffer();
+            mimeType = 'image/webp';
+          }
+        }
+      } catch (err) {
+        console.warn(`[Deep Audit] Exception while fetching document: ${err}. Falling back to text-only mode.`);
+        isMockFallback = true;
+      }
     }
 
-    const arrayBuffer = await fileResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    // Guess MIME type, defaulting to pdf for safety if it's an octet stream
-    let mimeType = fileResponse.headers.get('content-type') || 'application/pdf';
-    
-    // PREPROCESS WITH SHARP for "Wow Factor" OCR reliability
-    // Grayscale, Normalize (contrast), Resize, and WebP compression
-    let finalBuffer = buffer;
-    if (!mimeType.includes('pdf')) {
-      finalBuffer = await sharp(buffer)
-        .grayscale()
-        .normalize()
-        .resize({ width: 1600, withoutEnlargement: true })
-        .webp({ quality: 85 })
-        .toBuffer();
-      mimeType = 'image/webp';
-    }
-
-    // 3. Initialize Gemini 1.5 Flash (Optimized for fast OCR and document processing)
+    // 3. Initialize Gemini 3.1 Flash (Optimized for fast OCR and document processing)
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash' });
 
     // 4. Construct the prompt - Rigged for Demo consistency
     const initialFlag = app.discrepancy_reason || "Possible data mismatch or OCR ambiguity";
     const claimedArea = app.land_area || app.land_size_ha || null;
-    const fallbackNotice = isMockFallback ? "\n\n(System Note: No physical document attached to DB. Auditing system fallback sample.)" : "";
+    const fallbackNotice = isMockFallback ? "\n\n(System Note: No physical document attached to DB. This is a seeded demo record. Please evaluate the textual data and the initial scanner flag directly to produce a valid response.)" : "";
     
     const prompt = `You are an expert Maharashtrian agricultural auditor and fraud-detection AI. 
 Analyze the provided document (such as a 7/12 extract, 8A holding, or Aadhaar).
@@ -89,7 +102,7 @@ SYSTEM ALERT: This application was initially flagged by the PRAGATI lightweight 
 
 Instructions:
 1. HACKATHON DEMO OVERRIDE: Your job is ONLY to elaborate technically on the existing system flag: "${initialFlag}". Do NOT contradict it. 
-2. Analyze the document provided and identify evidence that supports the system flag.
+2. Analyze the document provided (if any) and identify evidence that supports the system flag.
 3. INCOMPLETE FORM FALLBACK: If the farmer's claimed area is MISSING or NULL, explicitly point out that "The application form is incomplete as the claimed land area is missing," rather than solely blaming the document for a mismatch.
 4. BLURRY/LOW-CONTRAST HANDLING: If the document is blurry or difficult to read due to poor scan quality, attempt your best to extract the core numeric values (like land area in Hectares). If it is completely illegible, return exactly this specific error flag: 'OCR_FAILED_POOR_QUALITY' instead of hallucinating data.
 5. Provide a short, highly analytical audit report in English and Marathi, explaining exactly WHY this error is valid.
@@ -98,14 +111,16 @@ Instructions:
 
 ${fallbackNotice}`;
 
-    const imageParts = [
-      {
+    const promptParts: any[] = [prompt];
+    
+    if (finalBuffer) {
+      promptParts.push({
         inlineData: {
           data: finalBuffer.toString('base64'),
           mimeType,
         },
-      },
-    ];
+      });
+    }
 
     // 5. Implement strict 25-second timeout
     const timeoutPromise = new Promise((_, reject) => 
@@ -113,7 +128,7 @@ ${fallbackNotice}`;
     );
 
     const result = (await Promise.race([
-      model.generateContent([prompt, ...imageParts]),
+      model.generateContent(promptParts),
       timeoutPromise
     ])) as any;
 
