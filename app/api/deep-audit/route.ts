@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import sharp from 'sharp';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -54,11 +55,18 @@ export async function POST(req: Request) {
     
     // Guess MIME type, defaulting to pdf for safety if it's an octet stream
     let mimeType = fileResponse.headers.get('content-type') || 'application/pdf';
-    if (mimeType === 'application/octet-stream') {
-      if (documentUrl.toLowerCase().endsWith('.jpg') || documentUrl.toLowerCase().endsWith('.jpeg')) mimeType = 'image/jpeg';
-      else if (documentUrl.toLowerCase().endsWith('.png')) mimeType = 'image/png';
-      else if (documentUrl.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
-      else mimeType = 'image/jpeg'; // Fallback
+    
+    // PREPROCESS WITH SHARP for "Wow Factor" OCR reliability
+    // Grayscale, Normalize (contrast), Resize, and WebP compression
+    let finalBuffer = buffer;
+    if (!mimeType.includes('pdf')) {
+      finalBuffer = await sharp(buffer)
+        .grayscale()
+        .normalize()
+        .resize({ width: 1600, withoutEnlargement: true })
+        .webp({ quality: 85 })
+        .toBuffer();
+      mimeType = 'image/webp';
     }
 
     // 3. Initialize Gemini 1.5 Pro (Powerful, Multimodal, Native PDF support)
@@ -93,7 +101,7 @@ ${fallbackNotice}`;
     const imageParts = [
       {
         inlineData: {
-          data: buffer.toString('base64'),
+          data: finalBuffer.toString('base64'),
           mimeType,
         },
       },
