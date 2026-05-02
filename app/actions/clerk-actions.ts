@@ -75,19 +75,23 @@ export async function updateApplicationStatus(id: string, status: string, justif
 
 export async function executeBulkRouting(decisions: { id: string, status: string, reason?: string | null }[]) {
   try {
-    const updates = decisions.map(d => ({
-      id: d.id,
-      status: d.status,
-      discrepancy_reason: d.reason || null,
-      is_manually_overridden: d.status === 'Verified_by_Clerk' ? true : false,
-    }));
+    // Use .update() per row so we only patch decision fields
+    // and never touch scheme_id or other NOT NULL columns
+    const results = await Promise.all(
+      decisions.map(d =>
+        supabaseAdmin
+          .from('farmer_applications')
+          .update({
+            status: d.status,
+            discrepancy_reason: d.reason || null,
+            is_manually_overridden: d.status === 'Verified_by_Clerk',
+          })
+          .eq('id', d.id)
+      )
+    );
 
-    // Upsert the decisions
-    const { error } = await supabaseAdmin
-      .from('farmer_applications')
-      .upsert(updates, { onConflict: 'id' });
-
-    if (error) throw error;
+    const failed = results.find(r => r.error);
+    if (failed?.error) throw failed.error;
 
     // Log the bulk action (optional, but good for demo)
     await supabaseAdmin.from('audit_logs').insert({
