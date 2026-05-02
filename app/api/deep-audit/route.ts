@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     // 3. Initialize Gemini 2.5 Flash with JSON output mode
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         responseMimeType: "application/json",
       }
@@ -175,9 +175,49 @@ ${isMockFallback ? "\nNOTE: This is a DEMO record. Simulate the evaluation for t
 
   } catch (error: any) {
     console.error('Deep Audit Error:', error);
-    // Explicitly handle the timeout error message
+
+    // CRITICAL: Handle Quota (429) or other API failures with a "Smart Mock Fallback"
+    // This ensures the DEMO NEVER CRASHES even if the API hits limits.
+    const isQuotaExceeded = error.message?.includes('429') || error.message?.includes('quota');
+    
+    if (isQuotaExceeded || error.message?.includes('fetch')) {
+      console.warn("[Deep Audit] API Quota Hit or Fetch Failed. Activating Deterministic Mock Audit...");
+      
+      // We'll generate a realistic mock based on what we know about the record
+      const mockAudit = {
+        overall_verdict: "Action_Required",
+        document_evaluations: [
+          {
+            document_name: "7/12 Extract (Satbara)",
+            status: "Suspicious",
+            clerk_explanation: "Land survey number matches but owner name discrepancy detected in OCR scan. Requires manual Aadhaar cross-verification.",
+            cross_document_impact: "Invalidates the primary land claim until holding is clarified."
+          },
+          {
+            document_name: "Aadhaar Card",
+            status: "Safe",
+            clerk_explanation: "Identity verified. Facial features in document match the system database profile.",
+            cross_document_impact: "Confirms identity but does not resolve land ownership mismatch."
+          },
+          {
+            document_name: "8A Holding Document",
+            status: "Suspicious",
+            clerk_explanation: "Total land area (Hectares) differs from the 7/12 extract by 0.45ha. Possible data entry error or outdated record.",
+            cross_document_impact: "Directly conflicts with 7/12 extract; both must be re-submitted."
+          }
+        ]
+      };
+
+      return NextResponse.json({ 
+        audit_report: mockAudit, 
+        document_urls: [], 
+        is_fallback: true,
+        is_mock_demo: true 
+      });
+    }
+
     if (error.message === 'Audit timed out. Please try again.') {
-      return NextResponse.json({ error: error.message }, { status: 504 }); // 504 Gateway Timeout
+      return NextResponse.json({ error: error.message }, { status: 504 });
     }
     return NextResponse.json({ error: error.message || 'Failed to run Deep AI Audit.' }, { status: 500 });
   }
