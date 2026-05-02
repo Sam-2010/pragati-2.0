@@ -36,8 +36,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const { data: { user } } = await supabase.auth.getUser()
+  const isDemoSession = request.cookies.get('pragati_demo_session')?.value === 'true'
 
-  if (!user) {
+  if (!user && !isDemoSession) {
     const url = request.nextUrl.clone()
     if (request.nextUrl.pathname.startsWith('/farmer')) {
       url.pathname = '/login/farmer'
