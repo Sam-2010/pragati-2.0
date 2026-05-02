@@ -14,10 +14,16 @@ export async function login(prevState: any, formData: FormData) {
   }
 
   // DEMO BYPASS FOR HACKATHON
+  if (email === 'farmer@pragati.gov.in' && password === 'pragati2026') {
+    redirect('/farmer/apply')
+  }
   if (email === 'clerk@pragati.gov.in' && password === 'pragati2026') {
     redirect('/clerk/queue')
   }
   if (email === 'officer@pragati.gov.in' && password === 'pragati2026') {
+    redirect('/officer')
+  }
+  if (email === 'tao@pragati.gov.in' && password === 'pragati2026') {
     redirect('/tao/dashboard')
   }
 

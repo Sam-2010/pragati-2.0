@@ -176,7 +176,7 @@ export default function Home() {
               </Link>
 
               {/* Officer Card */}
-              <Link href="/officer/dashboard" className="group relative bg-white border border-slate-200 rounded-[32px] p-8 text-left transition-all hover:border-amber-500 hover:shadow-2xl hover:-translate-y-2 overflow-hidden shadow-sm">
+              <Link href="/officer" className="group relative bg-white border border-slate-200 rounded-[32px] p-8 text-left transition-all hover:border-amber-500 hover:shadow-2xl hover:-translate-y-2 overflow-hidden shadow-sm">
                 <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                   <UserCog size={80} />
                 </div>

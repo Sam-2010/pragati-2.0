@@ -25,14 +25,12 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 1. Allow public landing page and API routes to handle their own auth/responses
+  // 1. Allow public landing page, login, and auth-related paths
   if (
     request.nextUrl.pathname === '/' || 
     request.nextUrl.pathname.startsWith('/api') ||
     request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/farmer') ||
-    request.nextUrl.pathname.startsWith('/clerk') ||
-    request.nextUrl.pathname.startsWith('/tao')
+    request.nextUrl.pathname.startsWith('/auth') // For supabase auth callback if needed
   ) {
     return supabaseResponse
   }
