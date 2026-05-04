@@ -28,6 +28,8 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '@/context/LanguageContext';
+import { LanguageSwitcherMinimal } from '@/components/LanguageSwitcher';
 
 interface Application {
   id: string;
@@ -58,6 +60,7 @@ export default function ClerkQueuePage() {
   const [isBulkExecuting, setIsBulkExecuting] = useState(false);
 
   const router = useRouter();
+  const { t } = useLanguage();
   const supabase = createClient();
 
   useEffect(() => {
@@ -287,9 +290,12 @@ export default function ClerkQueuePage() {
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Page Header */}
       <div className="flex items-end justify-between border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Exception Queue</h1>
-          <p className="text-sm text-slate-500 mt-1">Pending AI-Flagged applications requiring manual clerk intervention.</p>
+        <div className="flex items-center gap-6">
+          <LanguageSwitcherMinimal />
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">{t('exception_queue')}</h1>
+            <p className="text-sm text-slate-500 mt-1">{t('pending_intervention')}</p>
+          </div>
         </div>
         <div className="flex gap-4">
           <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm flex items-center gap-3">
@@ -297,7 +303,7 @@ export default function ClerkQueuePage() {
               <AlertTriangle size={18} />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400 leading-none">Total Flags</p>
+              <p className="text-[10px] uppercase font-bold text-slate-400 leading-none">{t('total_flags')}</p>
               <p className="text-lg font-bold text-slate-900 leading-none mt-1">{applications.length}</p>
             </div>
           </div>
@@ -306,7 +312,7 @@ export default function ClerkQueuePage() {
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all"
           >
             <History size={14} />
-            Refresh Queue
+            {t('refresh_queue')}
           </button>
           <button 
             onClick={handleTriggerAIBatch}
@@ -318,7 +324,7 @@ export default function ClerkQueuePage() {
             ) : (
               <Bot size={14} />
             )}
-            {isAiBatchProcessing ? "AI Engine Processing..." : "Trigger AI Batch Processor (Demo)"}
+            {isAiBatchProcessing ? t('ai_processing') : t('trigger_ai')}
           </button>
         </div>
       </div>
@@ -328,17 +334,17 @@ export default function ClerkQueuePage() {
           <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
             <CheckCircle2 size={32} />
           </div>
-          <h3 className="text-xl font-bold text-slate-900">Queue is Clear!</h3>
-          <p className="text-sm text-slate-500 max-w-xs">No pending exceptions found. All AI-flagged applications have been resolved.</p>
+          <h3 className="text-xl font-bold text-slate-900">{t('queue_clear')}</h3>
+          <p className="text-sm text-slate-500 max-w-xs">{t('no_exceptions')}</p>
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Application Detail</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">AI Discrepancy Reason</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right">Actions</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('application_detail')}</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('ai_discrepancy')}</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -360,7 +366,7 @@ export default function ClerkQueuePage() {
                       <div className="bg-amber-50 border border-amber-100 p-2.5 rounded-lg flex items-start gap-2.5 max-w-md">
                         <Clock size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
                         <p className="text-[11px] font-medium text-amber-800 leading-relaxed">
-                          Awaiting AI Batch Processing — Run &quot;Trigger AI Batch Processor&quot; to classify this application.
+                          {t('awaiting_ai_batch')}
                         </p>
                       </div>
                     ) : (
@@ -374,35 +380,35 @@ export default function ClerkQueuePage() {
                   </td>
                   <td className="px-6 py-5 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      <button 
-                        onClick={() => handleDeepAudit(app.id)}
-                        disabled={auditingAppId === app.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 border border-indigo-200 hover:border-indigo-600 rounded-lg transition-all"
-                      >
-                        {auditingAppId === app.id ? <Loader2 size={14} className="animate-spin" /> : <ClipboardCheck size={14} />}
-                        {auditingAppId === app.id ? "Analyzing Document..." : "Verify with AI Audit"}
-                      </button>
-                      <button 
-                        onClick={() => handleRequestSMS(app)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:shadow-sm transition-all"
-                      >
-                        <PhoneForwarded size={14} />
-                        Request Physical Doc
-                      </button>
-                      <button 
-                        onClick={() => handleDirectApprove(app)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 hover:border-emerald-600 rounded-lg transition-all"
-                      >
-                        <Check size={14} />
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => openOverrideModal(app)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 rounded-lg transition-all"
-                      >
-                        <ShieldCheck size={14} />
-                        Override
-                      </button>
+                        <button 
+                          onClick={() => handleDeepAudit(app.id)}
+                          disabled={auditingAppId === app.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 border border-indigo-200 hover:border-indigo-600 rounded-lg transition-all"
+                        >
+                          {auditingAppId === app.id ? <Loader2 size={14} className="animate-spin" /> : <ClipboardCheck size={14} />}
+                          {auditingAppId === app.id ? t('analyzing_doc') : t('verify_ai_audit')}
+                        </button>
+                        <button 
+                          onClick={() => handleRequestSMS(app)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:shadow-sm transition-all"
+                        >
+                          <PhoneForwarded size={14} />
+                          {t('request_physical')}
+                        </button>
+                        <button 
+                          onClick={() => handleDirectApprove(app)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 hover:border-emerald-600 rounded-lg transition-all"
+                        >
+                          <Check size={14} />
+                          {t('approve')}
+                        </button>
+                        <button 
+                          onClick={() => openOverrideModal(app)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 rounded-lg transition-all"
+                        >
+                          <ShieldCheck size={14} />
+                          {t('override')}
+                        </button>
                     </div>
                   </td>
                 </tr>
@@ -413,7 +419,7 @@ export default function ClerkQueuePage() {
                          <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-3">
                             <div className="flex items-center gap-2 text-slate-700">
                                <ClipboardCheck size={16} className="text-indigo-600" />
-                               <span className="font-bold text-xs uppercase tracking-tight">AI Audit Verification Report</span>
+                               <span className="font-bold text-xs uppercase tracking-tight">{t('ai_audit_report')}</span>
                             </div>
                             {auditResults[app.id] && (
                                <button 
@@ -424,14 +430,14 @@ export default function ClerkQueuePage() {
                                  })}
                                  className="text-slate-400 hover:text-slate-600 flex items-center gap-1 text-[11px] font-medium transition-colors"
                                >
-                                 <XCircle size={14} /> Close Report
+                                 <XCircle size={14} /> {t('close_report')}
                                </button>
                             )}
                          </div>
                          {auditingAppId === app.id ? (
                             <div className="flex items-center gap-3 py-4 text-slate-500">
                               <Loader2 size={18} className="animate-spin text-indigo-500" />
-                              <p className="text-xs font-medium italic">PRAGATI AI is currently cross-referencing document data with scheme criteria...</p>
+                              <p className="text-xs font-medium italic">{t('analyzing_cross_ref')}</p>
                             </div>
                          ) : auditResults[app.id] && typeof auditResults[app.id] === 'object' ? (
                             <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-inner">
@@ -439,7 +445,7 @@ export default function ClerkQueuePage() {
                                 <div className="flex items-center gap-2">
                                   <div className={`w-2 h-2 rounded-full ${auditResults[app.id].overall_verdict === 'Safe' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                    Overall Verdict: <span className={auditResults[app.id].overall_verdict === 'Safe' ? 'text-emerald-600' : 'text-red-600'}>
+                                    {t('overall_verdict_label')}: <span className={auditResults[app.id].overall_verdict === 'Safe' ? 'text-emerald-600' : 'text-red-600'}>
                                       {auditResults[app.id].overall_verdict}
                                     </span>
                                   </span>
@@ -482,7 +488,7 @@ export default function ClerkQueuePage() {
                                             <Eye size={13} />
                                           </a>
                                         </div>
-                                        <p className={`text-[10px] font-semibold uppercase tracking-tighter ${doc.status === 'Safe' ? 'text-emerald-600' : doc.status === 'Manual_Review' ? 'text-amber-600' : 'text-red-600'}`}>Status: {doc.status === 'Manual_Review' ? 'Manual Review Needed' : doc.status}</p>
+                                        <p className={`text-[10px] font-semibold uppercase tracking-tighter ${doc.status === 'Safe' ? 'text-emerald-600' : doc.status === 'Manual_Review' ? 'text-amber-600' : 'text-red-600'}`}>{t('application_status')}: {doc.status === 'Manual_Review' ? t('manual_review_needed') : doc.status}</p>
                                       </div>
                                     </div>
 
@@ -498,10 +504,10 @@ export default function ClerkQueuePage() {
                                         {/* Hover Tooltip (Short Summary) */}
                                         <div className="absolute right-0 bottom-full mb-2 w-56 bg-slate-900 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all z-[60] pointer-events-none transform translate-y-1 group-hover/info:translate-y-0">
                                           <p className="text-[10px] leading-relaxed text-slate-300">
-                                            <span className="font-bold text-white block mb-1">Quick Summary</span>
+                                            <span className="font-bold text-white block mb-1">{t('quick_summary')}</span>
                                             {doc.clerk_explanation.length > 80 ? doc.clerk_explanation.substring(0, 80) + "..." : doc.clerk_explanation}
                                           </p>
-                                          <p className="text-[9px] text-indigo-400 mt-2 font-bold animate-pulse">Click for full report →</p>
+                                          <p className="text-[9px] text-indigo-400 mt-2 font-bold animate-pulse">{t('click_full_report')} →</p>
                                           <div className="absolute -bottom-1 right-4 w-2 h-2 bg-slate-900 rotate-45"></div>
                                         </div>
                                       </div>
@@ -517,7 +523,7 @@ export default function ClerkQueuePage() {
                                 <span className="text-xs font-bold uppercase tracking-wider">Legacy Audit Format</span>
                               </div>
                               <p className="text-xs text-amber-700 leading-relaxed mb-3">
-                                This report was generated using the old text-based protocol. To see the new structured visual dashboard, please re-run the audit.
+                                {t('legacy_format')}
                               </p>
                               <button 
                                 onClick={() => {
@@ -536,7 +542,7 @@ export default function ClerkQueuePage() {
                          ) : null}
                          <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-400">
                             <Search size={12} />
-                            <span>Verified by PRAGATI Deep Audit (Gemini 1.5 Flash) | Point-wise Decision Verdict</span>
+                            <span>{t('verified_by_pragati')}</span>
                          </div>
                       </div>
                     </td>
@@ -557,19 +563,19 @@ export default function ClerkQueuePage() {
               <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4 border-2 border-white/40">
                 <ShieldAlert size={32} />
               </div>
-              <h3 className="text-xl font-bold">Override AI Protocol?</h3>
+              <h3 className="text-xl font-bold">{t('override_protocol')}</h3>
               <p className="text-sm text-red-100 mt-2">
-                WARNING: Bypassing the AI flag will mark this file as manually overridden and trigger a high-risk alert to the Taluka Officer (TAO).
+                {t('warning_bypass')}
               </p>
             </div>
             
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2">Audit Justification (Required)</label>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2">{t('audit_justification')}</label>
                 <textarea 
                   value={overrideJustification}
                   onChange={(e) => setOverrideJustification(e.target.value)}
-                  placeholder="Explain why the AI flag is being ignored (e.g., Physical document verified, OCR misread name)..."
+                  placeholder={t('explain_override')}
                   className="w-full h-24 p-3 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none outline-none transition-all"
                 />
               </div>
@@ -577,7 +583,7 @@ export default function ClerkQueuePage() {
               <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex items-start gap-3">
                 <Info size={14} className="text-slate-400 mt-0.5 flex-shrink-0" />
                 <p className="text-[10px] text-slate-500 leading-relaxed italic">
-                  Note: Your IP address and Clerk ID (C. Deshmukh) will be attached to this override for transparency.
+                  {t('clerk_id_attached')}
                 </p>
               </div>
 
@@ -586,7 +592,7 @@ export default function ClerkQueuePage() {
                   onClick={() => setShowOverrideModal(false)}
                   className="flex-1 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button 
                   onClick={handleOverrideApprove}
@@ -594,7 +600,7 @@ export default function ClerkQueuePage() {
                   className="flex-1 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
                 >
                   {isProcessing && <Loader2 size={14} className="animate-spin" />}
-                  Confirm Override
+                  {t('confirm_override')}
                 </button>
               </div>
             </div>
@@ -613,12 +619,12 @@ export default function ClerkQueuePage() {
                   <Bot size={24} className="text-indigo-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">AI Batch Evaluation Review</h3>
-                  <p className="text-sm text-slate-300">Human-in-the-Loop Supervision Required</p>
+                  <h3 className="text-xl font-bold">{t('ai_batch_review')}</h3>
+                  <p className="text-sm text-slate-300">{t('human_supervision')}</p>
                 </div>
               </div>
               <div className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-center">
-                <p className="text-[10px] uppercase font-bold text-slate-400">Total Processed</p>
+                <p className="text-[10px] uppercase font-bold text-slate-400">{t('total_processed')}</p>
                 <p className="text-xl font-bold text-white leading-none mt-1">{batchEvaluations.length}</p>
               </div>
             </div>
@@ -643,23 +649,23 @@ export default function ClerkQueuePage() {
                         {app.verdict === 'Safe to pass & no suspicion' ? (
                           <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded text-xs font-medium">
                             <CheckCircle2 size={12} />
-                            AI Verdict: {app.verdict}
+                            {t('ai_verdict_label')}: {app.verdict}
                           </div>
                         ) : app.verdict === 'Needs manual supervision' ? (
                           <div className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded text-xs font-medium">
                             <AlertTriangle size={12} />
-                            AI Verdict: {app.verdict}
+                            {t('ai_verdict_label')}: {app.verdict}
                           </div>
                         ) : (
                           <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded text-xs font-medium">
                             <ShieldAlert size={12} />
-                            AI Verdict: {app.verdict}
+                            {t('ai_verdict_label')}: {app.verdict}
                           </div>
                         )}
                         
                         {app.discrepancy_reason && (
                           <p className="text-[11px] text-slate-500 mt-1.5 max-w-lg">
-                            <span className="font-semibold text-slate-700">Reason:</span> {app.discrepancy_reason}
+                            <span className="font-semibold text-slate-700">{t('ai_discrepancy')}:</span> {app.discrepancy_reason}
                           </p>
                         )}
                       </div>
@@ -675,7 +681,7 @@ export default function ClerkQueuePage() {
                             : 'text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
                         }`}
                       >
-                        <Check size={14} /> Approve
+                        <Check size={14} /> {t('approve')}
                       </button>
                       <button
                         onClick={() => setClerkDecisions(prev => ({ ...prev, [app.id]: 'Hold' }))}
@@ -685,7 +691,7 @@ export default function ClerkQueuePage() {
                             : 'text-slate-500 hover:bg-amber-50 hover:text-amber-600'
                         }`}
                       >
-                        <Pause size={14} /> Hold
+                        <Pause size={14} /> {t('hold')}
                       </button>
                       <button
                         onClick={() => setClerkDecisions(prev => ({ ...prev, [app.id]: 'Reject' }))}
@@ -695,7 +701,7 @@ export default function ClerkQueuePage() {
                             : 'text-slate-500 hover:bg-red-50 hover:text-red-600'
                         }`}
                       >
-                        <X size={14} /> Reject
+                        <X size={14} /> {t('reject')}
                       </button>
                     </div>
                   </div>
@@ -712,7 +718,7 @@ export default function ClerkQueuePage() {
                   <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center border border-white text-red-600 z-10"><X size={10} /></div>
                 </div>
                 <span className="font-medium text-slate-700">{Object.keys(clerkDecisions).length}</span> 
-                of <span className="font-medium text-slate-700">{batchEvaluations.length}</span> decided
+                {t('decided_of')} <span className="font-medium text-slate-700">{batchEvaluations.length}</span>
               </div>
               
               <div className="flex gap-3">
@@ -724,7 +730,7 @@ export default function ClerkQueuePage() {
                   disabled={isBulkExecuting}
                   className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all"
                 >
-                  Discard Batch
+                  {t('discard_batch')}
                 </button>
                 <button 
                   onClick={handleExecuteBulkRouting}
@@ -732,7 +738,7 @@ export default function ClerkQueuePage() {
                   className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 rounded-xl shadow-md transition-all flex items-center gap-2"
                 >
                   {isBulkExecuting ? <Loader2 size={16} className="animate-spin" /> : <ClipboardCheck size={16} />}
-                  Confirm & Execute Routing
+                  {t('confirm_execute')}
                 </button>
               </div>
             </div>
@@ -744,18 +750,21 @@ export default function ClerkQueuePage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
             <div className="bg-indigo-600 p-6 text-white relative">
-              <button 
-                onClick={() => setSelectedDocInfo(null)}
-                className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
+              <div className="absolute top-4 right-4 flex items-center gap-3">
+                <LanguageSwitcherMinimal />
+                <button 
+                  onClick={() => setSelectedDocInfo(null)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
               <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-2xl ${selectedDocInfo.status === 'Safe' ? 'bg-emerald-500' : selectedDocInfo.status === 'Manual_Review' ? 'bg-amber-500' : 'bg-red-500'} shadow-lg`}>
                   <ShieldAlert size={24} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold opacity-80 uppercase tracking-widest">Document Audit Verdict</p>
+                  <p className="text-sm font-bold opacity-80 uppercase tracking-widest">{t('audit_verdict')}</p>
                   <h3 className="text-2xl font-black">{selectedDocInfo.document_name}</h3>
                 </div>
               </div>
@@ -765,7 +774,7 @@ export default function ClerkQueuePage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-indigo-600">
                   <Terminal size={18} />
-                  <h4 className="font-bold text-sm uppercase tracking-wider">Technical AI Verdict</h4>
+                  <h4 className="font-bold text-sm uppercase tracking-wider">{t('technical_ai_verdict')}</h4>
                 </div>
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
                   <p className="text-slate-700 leading-relaxed font-medium">
@@ -778,7 +787,7 @@ export default function ClerkQueuePage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-red-600">
                     <ShieldAlert size={18} />
-                    <h4 className="font-bold text-sm uppercase tracking-wider">Cross-Document Impact</h4>
+                    <h4 className="font-bold text-sm uppercase tracking-wider">{t('cross_doc_impact')}</h4>
                   </div>
                   <div className="bg-red-50 p-6 rounded-2xl border border-red-100 shadow-sm">
                     <p className="text-red-900 leading-relaxed italic font-medium">
@@ -793,7 +802,7 @@ export default function ClerkQueuePage() {
                   onClick={() => setSelectedDocInfo(null)}
                   className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
                 >
-                  Confirm & Close
+                  {t('confirm_close')}
                 </button>
               </div>
             </div>

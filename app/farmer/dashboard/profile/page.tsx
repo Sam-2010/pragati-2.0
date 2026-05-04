@@ -5,8 +5,11 @@ import { User, Phone, Check, Loader2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import { usePersistedForm } from "@/lib/usePersistedForm";
 import { ProfileProgress } from "@/components/ProfileProgress";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageSwitcherMinimal } from "@/components/LanguageSwitcher";
 
 export default function ProfilePage() {
+  const { t } = useLanguage();
   const [formData, setFormData] = usePersistedForm("farmer_profile", {
     aadhaar: "XXXXXXXX7181",
     name: "Mangulkar Sameer Sandeep",
@@ -44,23 +47,26 @@ export default function ProfilePage() {
       {/* Header Info Section */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-gray-100 pb-6 gap-6">
         <div className="flex flex-col gap-1">
-          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Personal Information</h3>
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{t('personal_info')}</h3>
           <div className="h-0.5 w-12 bg-[#1B4332]"></div>
         </div>
         
-        <div className="flex items-center gap-12">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-14 w-14 bg-sky-400 rounded-full flex items-center justify-center text-white border-4 border-sky-50 shadow-sm">
-              <User size={32} />
+        <div className="flex items-center gap-6">
+          <LanguageSwitcherMinimal />
+          <div className="flex items-center gap-12">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-14 w-14 bg-sky-400 rounded-full flex items-center justify-center text-white border-4 border-sky-50 shadow-sm">
+                <User size={32} />
+              </div>
+              <div className="h-0.5 w-full bg-sky-200"></div>
             </div>
-            <div className="h-0.5 w-full bg-sky-200"></div>
-          </div>
-          
-          <div className="flex flex-col items-center gap-2 opacity-30">
-            <div className="h-14 w-14 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-300">
-               <span className="font-bold text-xs">Caste</span>
+            
+            <div className="flex flex-col items-center gap-2 opacity-30">
+              <div className="h-14 w-14 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-300">
+                 <span className="font-bold text-xs">Caste</span>
+              </div>
+              <div className="h-0.5 w-full bg-gray-100"></div>
             </div>
-            <div className="h-0.5 w-full bg-gray-100"></div>
           </div>
         </div>
       </div>
@@ -68,32 +74,32 @@ export default function ProfilePage() {
       {/* Form Section */}
       <section>
         <div className="flex items-center justify-between border-b border-[#1B4332] pb-1 mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Personal Information</h2>
-          <span className="text-xs text-red-500 italic">All * marks fields are mandatory</span>
+          <h2 className="text-xl font-bold text-gray-800">{t('personal_info')}</h2>
+          <span className="text-xs text-red-500 italic">{t('mandatory_fields')}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
           <EditableField 
-            label="Farmer ID" 
+            label={t('farmer_id_label')} 
             value="FMR20241020" 
             readonly 
             required 
           />
           <EditableField 
-            label="Aadhaar Number" 
+            label={t('aadhaar_number')} 
             value={formData.aadhaar} 
             onChange={(val) => setFormData({ ...formData, aadhaar: val })}
             required 
           />
           <EditableField 
-            label="Farmer Name" 
+            label={t('farmer_name')} 
             value={formData.name} 
             onChange={(val) => setFormData({ ...formData, name: val })}
             required 
           />
           
           <div className="flex flex-col gap-1">
-            <label className="text-[13px] font-bold text-gray-700">Mobile Number <span className="text-red-500">*</span></label>
+            <label className="text-[13px] font-bold text-gray-700">{t('mobile_number')} <span className="text-red-500">*</span></label>
             <div className="flex gap-2">
               {isEditingMobile ? (
                 <input 
@@ -114,25 +120,25 @@ export default function ProfilePage() {
                   ${isEditingMobile ? "bg-[#1B4332]" : "bg-[#5CB85C]"}`}
               >
                 {isUpdatingMobile ? <Loader2 className="animate-spin" size={14} /> : (isEditingMobile ? <Check size={14} /> : <Edit2 size={12} />)}
-                {isUpdatingMobile ? "Updating..." : (isEditingMobile ? "Save" : "Update")}
+                {isUpdatingMobile ? t('updating') : (isEditingMobile ? t('save') : t('update'))}
               </button>
             </div>
           </div>
 
           <EditableField 
-            label="Date of Birth" 
+            label={t('dob')} 
             value={formData.dob} 
             onChange={(val) => setFormData({ ...formData, dob: val })}
             required 
           />
           <EditableField 
-            label="Age" 
+            label={t('age')} 
             value={formData.age} 
             onChange={(val) => setFormData({ ...formData, age: val })}
             required 
           />
           <EditableField 
-            label="Gender" 
+            label={t('gender')} 
             value={formData.gender} 
             onChange={(val) => setFormData({ ...formData, gender: val })}
             required 
@@ -143,11 +149,11 @@ export default function ProfilePage() {
       {/* Residence Section */}
       <section className="mt-4">
         <div className="flex items-center justify-between border-b border-[#1B4332] pb-1 mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Residence Address</h2>
+          <h2 className="text-xl font-bold text-gray-800">{t('residence_address')}</h2>
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-[13px] font-bold text-gray-700">Farmer Address <span className="text-red-500">*</span></label>
+          <label className="text-[13px] font-bold text-gray-700">{t('farmer_address')} <span className="text-red-500">*</span></label>
           <textarea 
             className="w-full px-3 py-3 bg-gray-100 border border-gray-200 rounded text-[13px] text-gray-700 min-h-[80px] shadow-inner outline-none focus:border-[#1B4332] transition-all"
             defaultValue="plot no-6 sarve no-27, galli no-11, near mscb dipi, Aurangabad (mh), 431001"

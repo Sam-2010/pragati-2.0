@@ -14,13 +14,17 @@ import {
   ChevronRight,
   Info
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageSwitcherMinimal } from "@/components/LanguageSwitcher";
 
 export default function Home() {
+  const { t } = useLanguage();
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Top Banner - Government Style */}
       <div className="bg-slate-900 text-white py-2 px-4 text-[10px] uppercase tracking-[0.2em] font-bold text-center border-b border-white/10">
-        Official Portal of the Government of Maharashtra • Agriculture Department
+        {t('official_portal')}
       </div>
 
       {/* Navigation / Header */}
@@ -32,19 +36,22 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none">PRAGATI AI</h1>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Transparency & Growth</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t('transparency_growth')}</p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#about" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors">About Platform</a>
-            <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors">Verification AI</a>
-            <Link 
-              href="/farmer/apply" 
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-full transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 group"
-            >
-              Apply for Subsidy
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
+          <div className="flex items-center gap-4">
+            <LanguageSwitcherMinimal />
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#about" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors">{t('about_platform')}</a>
+              <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors">{t('verification_ai')}</a>
+              <Link 
+                href="/farmer/apply" 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-full transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 group"
+              >
+                {t('apply_subsidy')}
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
@@ -59,25 +66,24 @@ export default function Home() {
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider mb-8 border border-emerald-100 animate-in fade-in slide-in-from-bottom-4">
                 <Zap size={14} className="animate-pulse" />
-                AI-Driven Transparency Engine
+                {t('ai_driven_engine')}
               </div>
               <h2 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tight leading-[0.95] mb-8">
-                Fast-Tracking <span className="text-emerald-600 italic">Farmer</span> Subsidies with AI.
+                {t('hero_title')}
               </h2>
               <p className="text-lg md:text-xl text-slate-600 leading-relaxed mb-10 max-w-2xl font-medium">
-                PRAGATI AI eliminates corruption and delays in agricultural Direct Benefit Transfers. 
-                Using high-precision AI document auditing, we ensure every rupee reaches the right soil, instantly.
+                {t('hero_desc')}
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/farmer/apply" className="bg-slate-900 hover:bg-black text-white text-lg font-bold px-8 py-4 rounded-2xl transition-all shadow-2xl flex items-center justify-center gap-3 active:scale-95">
-                  Start Farmer Application
+                  {t('start_application')}
                   <ChevronRight size={20} />
                 </Link>
                 <div className="flex items-center gap-4 px-6 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
                   <ShieldCheck className="text-emerald-500" size={24} />
                   <div className="text-left">
-                    <p className="text-xs font-bold text-slate-400 uppercase leading-none">Security Status</p>
-                    <p className="text-sm font-bold text-slate-900 mt-1">Audit Log Active</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase leading-none">{t('security_status')}</p>
+                    <p className="text-sm font-bold text-slate-900 mt-1">{t('audit_log_active')}</p>
                   </div>
                 </div>
               </div>
@@ -93,27 +99,27 @@ export default function Home() {
                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
                   <Search size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">AI Verification</h3>
+                <h3 className="text-xl font-bold text-slate-900">{t('ai_verification')}</h3>
                 <p className="text-slate-500 text-sm leading-relaxed">
-                  Deep scanning of 7/12 extracts and land documents using Gemini 1.5 Pro to detect fraud and mismatches instantly.
+                  {t('ai_verification_desc')}
                 </p>
               </div>
               <div className="space-y-4">
                 <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
                   <Shield size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Audit Trail</h3>
+                <h3 className="text-xl font-bold text-slate-900">{t('audit_trail')}</h3>
                 <p className="text-slate-500 text-sm leading-relaxed">
-                  Immutable blockchain-style ledger records every approval, rejection, and manual override for total accountability.
+                  {t('audit_trail_desc')}
                 </p>
               </div>
               <div className="space-y-4">
                 <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
                   <Zap size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Seamless DBT</h3>
+                <h3 className="text-xl font-bold text-slate-900">{t('seamless_dbt')}</h3>
                 <p className="text-slate-500 text-sm leading-relaxed">
-                  Direct Benefit Transfer pipeline integrated with state treasury systems for rapid fund disbursement post-verification.
+                  {t('seamless_dbt_desc')}
                 </p>
               </div>
             </div>
@@ -124,7 +130,7 @@ export default function Home() {
         <section className="py-32 bg-slate-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="mb-16">
-              <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight uppercase italic">Stakeholder Access</h2>
+              <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight uppercase italic">{t('stakeholder_access')}</h2>
               <div className="h-1.5 w-24 bg-emerald-600 mx-auto rounded-full" />
               <p className="text-slate-500 mt-6 font-semibold uppercase tracking-widest text-xs">Secure login required for administrative access</p>
             </div>
@@ -138,7 +144,7 @@ export default function Home() {
                 <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                   <Users size={28} />
                 </div>
-                <h4 className="text-xl font-bold text-slate-900 mb-2">Farmer Portal</h4>
+                <h4 className="text-xl font-bold text-slate-900 mb-2">{t('farmer_portal')}</h4>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">Apply for schemes, track fund status, and upload documents.</p>
                 <div className="flex items-center text-emerald-600 text-xs font-black uppercase tracking-widest gap-2">
                   Apply Now <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -153,7 +159,7 @@ export default function Home() {
                 <div className="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                   <Briefcase size={28} />
                 </div>
-                <h4 className="text-xl font-bold text-slate-900 mb-2">Clerk Desk</h4>
+                <h4 className="text-xl font-bold text-slate-900 mb-2">{t('clerk_desk')}</h4>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">Review flagged applications, run AI audits, and verify docs.</p>
                 <div className="flex items-center text-slate-900 text-xs font-black uppercase tracking-widest gap-2">
                   Process Queue <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -168,7 +174,7 @@ export default function Home() {
                 <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <Building2 size={28} />
                 </div>
-                <h4 className="text-xl font-bold text-slate-900 mb-2">TAO Dashboard</h4>
+                <h4 className="text-xl font-bold text-slate-900 mb-2">{t('tao_dashboard_label')}</h4>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">Taluka Agriculture Officer panel for digital signing & sanctioning.</p>
                 <div className="flex items-center text-blue-600 text-xs font-black uppercase tracking-widest gap-2">
                   Officer Login <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -183,7 +189,7 @@ export default function Home() {
                 <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                   <UserCog size={28} />
                 </div>
-                <h4 className="text-xl font-bold text-slate-900 mb-2">Admin Control</h4>
+                <h4 className="text-xl font-bold text-slate-900 mb-2">{t('admin_control')}</h4>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">High-level insights, district KPIs, and system-wide audit reports.</p>
                 <div className="flex items-center text-amber-600 text-xs font-black uppercase tracking-widest gap-2">
                   Global Dashboard <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />

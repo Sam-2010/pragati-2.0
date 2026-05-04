@@ -14,12 +14,15 @@ import {
   Settings,
   ChevronRight
 } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
+import { LanguageSwitcherMinimal } from '@/components/LanguageSwitcher';
 
 export default function TAOLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       {/* Red Warning Banner */}
@@ -93,6 +96,7 @@ export default function TAOLayout({
             </div>
             
             <div className="flex items-center gap-6">
+              <LanguageSwitcherMinimal />
               <div className="relative group">
                 <Bell size={20} className="text-slate-400 group-hover:text-slate-900 cursor-pointer transition-colors" />
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] flex items-center justify-center rounded-full border-2 border-white font-bold animate-bounce">5</span>

@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { LanguageSwitcherMinimal } from '@/components/LanguageSwitcher';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function ClerkLayout({
   children,
@@ -23,6 +25,7 @@ export default function ClerkLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleLogout = () => {
     // Clear any local state if needed (for demo purpose)
@@ -57,24 +60,24 @@ export default function ClerkLayout({
           </div>
 
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            <div className="pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Main Menu</div>
+            <div className="pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('main_menu')}</div>
             <Link href="/clerk/queue" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
               <LayoutDashboard size={18} />
-              Dashboard Overview
+              {t('dashboard')}
             </Link>
             <Link href="/clerk/queue" className="flex items-center gap-3 px-3 py-2 text-sm text-white bg-emerald-600/10 border-l-2 border-emerald-500 rounded-r-lg font-medium">
               <ClipboardList size={18} className="text-emerald-500" />
-              Exception Queue
+              {t('exception_queue')}
             </Link>
             
-            <div className="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tools</div>
+            <div className="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('tools')}</div>
             <Link href="#" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
               <FileSearch size={18} />
-              Verify Documents
+              {t('verify_documents')}
             </Link>
             <Link href="#" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
               <MessageSquare size={18} />
-              SMS Communications
+              {t('sms_communications')}
             </Link>
           </nav>
 
@@ -85,7 +88,7 @@ export default function ClerkLayout({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold truncate">C. Deshmukh</p>
-                <p className="text-[10px] text-slate-500 truncate">Senior Clerk (Pune)</p>
+                <p className="text-[10px] text-slate-500 truncate">{t('senior_clerk')} (Pune)</p>
               </div>
             </div>
             <button 
@@ -93,7 +96,7 @@ export default function ClerkLayout({
               className="flex items-center justify-center gap-2 w-full py-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-red-900/40 rounded-lg transition-all"
             >
               <LogOut size={14} />
-              Sign Out
+              {t('sign_out')}
             </button>
           </div>
         </aside>
@@ -102,22 +105,23 @@ export default function ClerkLayout({
         <main className="flex-1 flex flex-col overflow-hidden">
           <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10 shadow-sm">
             <div className="flex items-center gap-4">
-              <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wider">Queue: <span className="text-slate-900">Exception Handling</span></h2>
+              <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wider">{t('queue_label')}: <span className="text-slate-900">{t('exception_handling')}</span></h2>
               <div className="h-4 w-px bg-slate-200" />
               <div className="flex items-center gap-2 text-[11px] text-slate-500">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live Feed (Supabase)
+                {t('live_feed')}
               </div>
             </div>
             
             <div className="flex items-center gap-6">
+              <LanguageSwitcherMinimal />
               <div className="relative group" onClick={handleNotificationClick}>
                 <Bell size={20} className="text-slate-400 group-hover:text-slate-900 cursor-pointer transition-colors" />
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] flex items-center justify-center rounded-full border-2 border-white font-bold">3</span>
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-900">May 01, 2026</p>
-                <p className="text-[10px] text-slate-500">Taluka: Purandar</p>
+                <p className="text-[10px] text-slate-500">{t('taluka')}: Purandar</p>
               </div>
             </div>
           </header>
