@@ -143,8 +143,8 @@ STRICT OUTPUT JSON SCHEMA (return ONLY this, no extra text):
     {
       "document_name": string,
       "status": "Safe" | "Manual_Review" | "Suspicious",
-      "clerk_explanation": string (1-2 plain sentences for a non-technical clerk),
-      "cross_document_impact": string (how this finding affects other documents)
+      "clerk_explanation": string (provide both English and Marathi translations separated by | ),
+      "cross_document_impact": string (provide both English and Marathi translations separated by | )
     }
   ]
 }`;
@@ -219,20 +219,20 @@ STRICT OUTPUT JSON SCHEMA (return ONLY this, no extra text):
           {
             document_name: "7/12 Extract (Satbara Utara)",
             status: "Manual_Review",
-            clerk_explanation: "गट क्रमांक (Survey Number) matches but owner name has a minor transliteration difference. Likely safe but needs clerk confirmation.",
-            cross_document_impact: "If owner name mismatch is confirmed, 8A holding validity is also affected."
+            clerk_explanation: "गट क्रमांक (Survey Number) matches but owner name has a minor transliteration difference. Likely safe but needs clerk confirmation. | गट क्रमांक जुळत आहे परंतु मालकाच्या नावामध्ये किरकोळ लिप्यंतर फरक आहे. बहुधा सुरक्षित आहे परंतु लिपिकाच्या पुष्टीकरणाची आवश्यकता आहे.",
+            cross_document_impact: "If owner name mismatch is confirmed, 8A holding validity is also affected. | जर मालकाच्या नावातील विसंगतीची पुष्टी झाली, तर ८अ धारणा वैधतेवर देखील परिणाम होतो."
           },
           {
             document_name: "Aadhaar Card",
             status: "Safe",
-            clerk_explanation: "Identity verified. Name and DOB match the farmer profile in the system database.",
-            cross_document_impact: "Confirms identity — does not affect land document validity."
+            clerk_explanation: "Identity verified. Name and DOB match the farmer profile in the system database. | ओळख पटली आहे. नाव आणि जन्मतारीख सिस्टम डेटाबेसमधील शेतकरी प्रोफाईलशी जुळतात.",
+            cross_document_impact: "Confirms identity — does not affect land document validity. | ओळखीची पुष्टी करते — जमिनीच्या कागदपत्रांच्या वैधतेवर परिणाम करत नाही."
           },
           {
             document_name: "8A Holding Document",
             status: "Manual_Review",
-            clerk_explanation: "Holding area differs from 7/12 by 0.3 Ha which is within normal survey rounding limits, but flagged for caution.",
-            cross_document_impact: "Minor discrepancy — cross-reference with latest talathi records recommended."
+            clerk_explanation: "Holding area differs from 7/12 by 0.3 Ha which is within normal survey rounding limits, but flagged for caution. | धारणा क्षेत्र ७/१२ पेक्षा ०.३ हेक्टरने वेगळे आहे जे सामान्य सर्वेक्षण राउंडिंग मर्यादेत आहे, परंतु सावधगिरीसाठी ध्वजांकित केले आहे.",
+            cross_document_impact: "Minor discrepancy — cross-reference with latest talathi records recommended. | किरकोळ विसंगती — ताज्या तलाठी रेकॉर्डसह क्रॉस-रेफरन्स करण्याची शिफारस केली जाते."
           }
         ]
       };

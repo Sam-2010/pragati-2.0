@@ -60,7 +60,14 @@ export default function ClerkQueuePage() {
   const [isBulkExecuting, setIsBulkExecuting] = useState(false);
 
   const router = useRouter();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+
+  const getLocalizedText = (text: string) => {
+    if (!text) return "";
+    const parts = text.split('|');
+    if (parts.length < 2) return text;
+    return language === 'mr' ? parts[1].trim() : parts[0].trim();
+  };
   const supabase = createClient();
 
   useEffect(() => {
@@ -505,7 +512,7 @@ export default function ClerkQueuePage() {
                                         <div className="absolute right-0 bottom-full mb-2 w-56 bg-slate-900 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all z-[60] pointer-events-none transform translate-y-1 group-hover/info:translate-y-0">
                                           <p className="text-[10px] leading-relaxed text-slate-300">
                                             <span className="font-bold text-white block mb-1">{t('quick_summary')}</span>
-                                            {doc.clerk_explanation.length > 80 ? doc.clerk_explanation.substring(0, 80) + "..." : doc.clerk_explanation}
+                                            {getLocalizedText(doc.clerk_explanation).length > 80 ? getLocalizedText(doc.clerk_explanation).substring(0, 80) + "..." : getLocalizedText(doc.clerk_explanation)}
                                           </p>
                                           <p className="text-[9px] text-indigo-400 mt-2 font-bold animate-pulse">{t('click_full_report')} →</p>
                                           <div className="absolute -bottom-1 right-4 w-2 h-2 bg-slate-900 rotate-45"></div>
@@ -776,11 +783,11 @@ export default function ClerkQueuePage() {
                   <Terminal size={18} />
                   <h4 className="font-bold text-sm uppercase tracking-wider">{t('technical_ai_verdict')}</h4>
                 </div>
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
-                  <p className="text-slate-700 leading-relaxed font-medium">
-                    {selectedDocInfo.clerk_explanation}
-                  </p>
-                </div>
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
+                    <p className="text-slate-700 leading-relaxed font-medium">
+                      {getLocalizedText(selectedDocInfo.clerk_explanation)}
+                    </p>
+                  </div>
               </div>
 
               {selectedDocInfo.cross_document_impact && (
@@ -791,7 +798,7 @@ export default function ClerkQueuePage() {
                   </div>
                   <div className="bg-red-50 p-6 rounded-2xl border border-red-100 shadow-sm">
                     <p className="text-red-900 leading-relaxed italic font-medium">
-                      {selectedDocInfo.cross_document_impact}
+                      {getLocalizedText(selectedDocInfo.cross_document_impact)}
                     </p>
                   </div>
                 </div>
