@@ -25,23 +25,26 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 1. Allow public landing page and API routes to handle their own auth/responses
+  // 1. Allow public landing page, login, and auth-related paths
   if (
     request.nextUrl.pathname === '/' || 
     request.nextUrl.pathname.startsWith('/api') ||
     request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/farmer') ||
-    request.nextUrl.pathname.startsWith('/clerk') ||
-    request.nextUrl.pathname.startsWith('/tao')
+    request.nextUrl.pathname.startsWith('/auth') // For supabase auth callback if needed
   ) {
     return supabaseResponse
   }
 
   const { data: { user } } = await supabase.auth.getUser()
+  const isDemoSession = request.cookies.get('pragati_demo_session')?.value === 'true'
 
-  if (!user) {
+  if (!user && !isDemoSession) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    if (request.nextUrl.pathname.startsWith('/farmer')) {
+      url.pathname = '/login/farmer'
+    } else {
+      url.pathname = '/login/official'
+    }
     return NextResponse.redirect(url)
   }
 

@@ -18,6 +18,8 @@ import {
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { analyzeDocumentWithPaddleOCR } from "@/lib/ocr-service";
+import { processDocumentAudit } from "@/app/actions/farmer-actions";
 
 const SCHEMES_DATA: Record<string, any> = {
   "mechanization": {
@@ -50,6 +52,14 @@ const SCHEMES_DATA: Record<string, any> = {
     documents: ["7/12 Extract", "8A Holding", "Aadhaar Card"],
     icon: <Search className="text-cyan-500" />
   }
+};
+
+const DOC_TRANSLATIONS: Record<string, Record<string, string>> = {
+  "7/12 Extract": { EN: "7/12 Extract", MR: "७/१२ उतारा" },
+  "8A Holding": { EN: "8A Holding", MR: "८अ उतारा" },
+  "Aadhaar Card": { EN: "Aadhaar Card", MR: "आधार कार्ड" },
+  "Bank Passbook Copy": { EN: "Bank Passbook Copy", MR: "बँक पासबुक" },
+  "Caste Certificate": { EN: "Caste Certificate", MR: "जातीचा दाखला" }
 };
 
 export default function SchemeApplicationPage() {
@@ -100,6 +110,31 @@ export default function SchemeApplicationPage() {
     setErrorMessages(prev => ({ ...prev, [docName]: "" }));
 
     try {
+      // 1. OCR Analysis Step (For Land Records)
+      let ocrText = "";
+      if (docName === "7/12 Extract" || docName === "8A Holding") {
+        toast.info(`Analyzing ${docName} with PaddleOCR...`, { icon: <Search className="animate-pulse" /> });
+        
+        const ocrFormData = new FormData();
+        ocrFormData.append('file', file);
+        
+        const ocrResult = await analyzeDocumentWithPaddleOCR(ocrFormData);
+        
+        // CRITICAL DEBUG: Inject truth alert for Vercel vs Localhost testing
+        if (ocrResult.success) {
+          const first20Words = ocrResult.fullText.split(/\s+/).slice(0, 20).join(" ");
+          alert(`TRUTH: OCR SUCCESS. Extracted Text: ${first20Words}`);
+          
+          ocrText = ocrResult.fullText;
+          toast.success(`OCR Success: Found ${ocrResult.text.length} Marathi text segments.`);
+          console.log("[OCR Pipeline Output]:", ocrText);
+        } else {
+          alert(`TRUTH: OCR FAILED. Exact Error: ${ocrResult.errorDetails}`);
+          console.warn("[OCR Pipeline Fallback]: Manual Review Required due to OCR failure.");
+          toast.warning("OCR Engine Offline: Document queued for Manual Review.");
+        }
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${schemeId}_${docName.replace(/\s+/g, '_')}.${fileExt}`;
       
@@ -136,18 +171,38 @@ export default function SchemeApplicationPage() {
           scheme_name: scheme.name[lang],
           document_urls: Object.values(uploadedUrls),
           status: 'Pending'
-        }]);
+        }])
+        .select('id')
+        .single();
 
       if (error) throw error;
+      const appId = data.id;
 
-      toast.success("Final Application Submitted!", {
-        description: `Your application for ${scheme.name[lang]} has been recorded in PRAGATI Database.`
+      toast.success("Application Created!", {
+        description: `ID: ${appId}. Starting AI Audit...`
       });
+
+      // Trigger AI Audit for relevant documents
+      for (const [docName, file] of Object.entries(files)) {
+        if (file && (docName === "7/12 Extract" || docName === "8A Holding")) {
+          const auditFormData = new FormData();
+          auditFormData.append('file', file);
+          
+          toast.promise(processDocumentAudit(appId, auditFormData), {
+            loading: `Auditing ${docName}...`,
+            success: (res: any) => {
+              if (res.verdict === 'Verified') return `${docName} Verified by AI!`;
+              return `${docName} flagged for Manual Review: ${res.reason}`;
+            },
+            error: `Failed to audit ${docName}`
+          });
+        }
+      }
       
       // Reset state after success
       setTimeout(() => {
         window.location.href = "/farmer/dashboard/profile";
-      }, 3000);
+      }, 5000);
 
     } catch (err: any) {
       console.error("Final Submit Error:", err);
@@ -265,7 +320,7 @@ function DocumentUploadCard({ docName, lang, file, status, errorMessage, onFileS
       <div className="p-5 flex justify-between items-start">
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lang === "EN" ? "Required Document" : "आवश्यक कागदपत्र"}</span>
-          <h4 className="text-lg font-bold text-gray-800">{docName}</h4>
+          <h4 className="text-lg font-bold text-gray-800">{DOC_TRANSLATIONS[docName]?.[lang] || docName}</h4>
         </div>
         {status === "success" && (
           <div className="bg-green-500 text-white p-1 rounded-full animate-bounce shadow-lg">

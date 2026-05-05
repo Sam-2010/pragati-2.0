@@ -8,7 +8,7 @@ import {
   FileText, AlertTriangle, CheckCircle, Clock,
   Upload, Loader2, Search, ClipboardCheck, FileText as FileIcon, Bot
 } from 'lucide-react'
-import { MAHARASHTRA_DATA } from '@/lib/talukas'
+import { MAHARASHTRA_GEOGRAPHY, District } from '@/lib/geography'
 
 export default function ClerkDashboard() {
   const [activeTab, setActiveTab] = useState<'intake' | 'eligibility' | 'grievance'>('intake')
@@ -20,15 +20,15 @@ export default function ClerkDashboard() {
   const [farmerData, setFarmerData] = useState({
     name: '',
     aadhaar: '',
-    district: 'Pune',
-    taluka: 'Haveli'
+    district: 'Pune' as District,
+    taluka: MAHARASHTRA_GEOGRAPHY['Pune'][0]
   })
 
   // Eligibility State
   const [profileData, setProfileData] = useState({
     name: '',
-    district: 'Pune',
-    taluka: 'Haveli',
+    district: 'Pune' as District,
+    taluka: MAHARASHTRA_GEOGRAPHY['Pune'][0],
     landSize: 2.5,
     primaryCrop: 'Sugar Cane',
     category: 'General'
@@ -114,8 +114,8 @@ export default function ClerkDashboard() {
   const [grievanceData, setGrievanceData] = useState({
     farmer_name: '',
     aadhaar_last4: '',
-    district: 'Pune',
-    taluka: 'Haveli',
+    district: 'Pune' as District,
+    taluka: MAHARASHTRA_GEOGRAPHY['Pune'][0],
     complaint_text: ''
   })
 
@@ -283,12 +283,12 @@ export default function ClerkDashboard() {
                     <select 
                       value={farmerData.district}
                       onChange={(e) => {
-                        const dist = e.target.value;
-                        setFarmerData({...farmerData, district: dist, taluka: MAHARASHTRA_DATA[dist][0]});
+                        const dist = e.target.value as District;
+                        setFarmerData({...farmerData, district: dist, taluka: MAHARASHTRA_GEOGRAPHY[dist][0]});
                       }}
                       className="w-full bg-[#f8faf9] border border-[#e1e3e2] rounded-lg px-4 py-2 text-sm text-[#191c1c] focus:ring-2 focus:ring-[#1B4332] outline-none"
                     >
-                      {Object.keys(MAHARASHTRA_DATA).map(dist => (
+                      {Object.keys(MAHARASHTRA_GEOGRAPHY).map(dist => (
                         <option key={dist} value={dist}>{dist}</option>
                       ))}
                     </select>
@@ -300,7 +300,7 @@ export default function ClerkDashboard() {
                       onChange={(e) => setFarmerData({...farmerData, taluka: e.target.value})}
                       className="w-full bg-[#f8faf9] border border-[#e1e3e2] rounded-lg px-4 py-2 text-sm text-[#191c1c] focus:ring-2 focus:ring-[#1B4332] outline-none"
                     >
-                      {MAHARASHTRA_DATA[farmerData.district]?.map(tal => (
+                      {MAHARASHTRA_GEOGRAPHY[farmerData.district]?.map(tal => (
                         <option key={tal} value={tal}>{tal}</option>
                       ))}
                     </select>
@@ -500,12 +500,12 @@ export default function ClerkDashboard() {
                     <select 
                       value={profileData.district}
                       onChange={(e) => {
-                        const dist = e.target.value;
-                        setProfileData({...profileData, district: dist, taluka: MAHARASHTRA_DATA[dist][0]});
+                        const dist = e.target.value as District;
+                        setProfileData({...profileData, district: dist, taluka: MAHARASHTRA_GEOGRAPHY[dist][0]});
                       }}
                       className="w-full bg-[#f8faf9] border border-[#e1e3e2] rounded-xl px-4 py-3 text-sm text-[#191c1c] focus:ring-2 focus:ring-[#1B4332] outline-none"
                     >
-                      {Object.keys(MAHARASHTRA_DATA).map(dist => (
+                      {Object.keys(MAHARASHTRA_GEOGRAPHY).map(dist => (
                         <option key={dist} value={dist}>{dist}</option>
                       ))}
                     </select>
@@ -517,7 +517,7 @@ export default function ClerkDashboard() {
                       onChange={(e) => setProfileData({...profileData, taluka: e.target.value})}
                       className="w-full bg-[#f8faf9] border border-[#e1e3e2] rounded-xl px-4 py-3 text-sm text-[#191c1c] focus:ring-2 focus:ring-[#1B4332] outline-none"
                     >
-                      {MAHARASHTRA_DATA[profileData.district]?.map(tal => (
+                      {MAHARASHTRA_GEOGRAPHY[profileData.district]?.map(tal => (
                         <option key={tal} value={tal}>{tal}</option>
                       ))}
                     </select>
@@ -639,12 +639,12 @@ export default function ClerkDashboard() {
                       <select 
                         value={grievanceData.district}
                         onChange={(e) => {
-                          const dist = e.target.value;
-                          setGrievanceData({...grievanceData, district: dist});
+                          const dist = e.target.value as District;
+                          setGrievanceData({...grievanceData, district: dist, taluka: MAHARASHTRA_GEOGRAPHY[dist][0]});
                         }}
                         className="w-full bg-[#f8faf9] border border-[#e1e3e2] rounded-xl px-4 py-3 text-sm text-[#191c1c] focus:ring-2 focus:ring-[#1B4332] outline-none"
                       >
-                        {Object.keys(MAHARASHTRA_DATA).map(dist => (
+                        {Object.keys(MAHARASHTRA_GEOGRAPHY).map(dist => (
                           <option key={dist} value={dist}>{dist}</option>
                         ))}
                       </select>
@@ -656,7 +656,7 @@ export default function ClerkDashboard() {
                         onChange={(e) => setGrievanceData({...grievanceData, taluka: e.target.value})}
                         className="w-full bg-[#f8faf9] border border-[#e1e3e2] rounded-xl px-4 py-3 text-sm text-[#191c1c] focus:ring-2 focus:ring-[#1B4332] outline-none"
                       >
-                        {MAHARASHTRA_DATA[grievanceData.district]?.map(tal => (
+                        {MAHARASHTRA_GEOGRAPHY[grievanceData.district]?.map(tal => (
                           <option key={tal} value={tal}>{tal}</option>
                         ))}
                       </select>

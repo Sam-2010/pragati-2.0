@@ -12,14 +12,65 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   }
 });
 
-// Realistic bilingual discrepancies for the MahaDBT context
-const DISCREPANCY_REASONS = [
-  "Name mismatch between Aadhaar and 7/12 extract (Spelling variation detected). / आधार आणि ७/१२ उताऱ्यामध्ये नावात तफावत.",
-  "Area mismatch: 8A holding shows lower area than claimed. / ८अ उताऱ्यानुसार क्षेत्र कमी आहे.",
-  "Bank IFSC code inactive or branch merged. Needs manual verification. / बँक IFSC कोड चुकीचा आहे.",
-  "Document scan blurry or unreadable. OCR confidence below threshold (42%). / दस्तऐवज स्कॅन अस्पष्ट आहे.",
-  "Joint ownership detected without NOC/consent signature on 7/12. / ७/१२ वर संयुक्त मालकी पण संमतीपत्र नाही."
-];
+// Deterministic rule-based classifier — NO randomness, NO hallucination.
+// Each rule checks real application fields. This is reproducible: same input = same output.
+function classifyApplication(app: any): {
+  verdict: string;
+  proposed_status: string;
+  discrepancy_reason: string | null;
+} {
+  const issues: string[] = [];
+
+  // Rule 1: Missing critical fields
+  const farmerName = app.farmer_name || app.farmer_id || '';
+  const landArea = parseFloat(app.land_area || app.land_size_ha || '0');
+  const scheme = app.scheme_name || '';
+
+  if (!farmerName || farmerName.trim() === '') {
+    issues.push("Farmer identity (name/ID) is missing from the record.");
+  }
+
+  if (landArea <= 0) {
+    issues.push("Claimed land area is missing or zero — cannot verify eligibility.");
+  }
+
+  // Rule 2: Document availability check
+  const docUrls = (app.document_urls || []) as string[];
+  const validDocs = docUrls.filter((u: string) => u && typeof u === 'string' && u.startsWith('http'));
+
+  if (validDocs.length === 0) {
+    issues.push("No uploaded documents found. 7/12 Extract and Aadhaar are required.");
+  } else if (validDocs.length < 2) {
+    issues.push(`Only ${validDocs.length} document(s) uploaded. Minimum 2 required (7/12 + Aadhaar).`);
+  }
+
+  // Rule 3: Land area threshold for micro-irrigation schemes
+  if (scheme.toLowerCase().includes('micro-irrigation') || scheme.toLowerCase().includes('sinchayee')) {
+    if (landArea > 10) {
+      issues.push(`Land area (${landArea} Ha) exceeds typical micro-irrigation threshold of 10 Ha. Verify eligibility.`);
+    }
+  }
+
+  // Rule 4: If existing discrepancy flag from a previous run, propagate it
+  if (app.discrepancy_reason && app.status === 'Action_Required') {
+    issues.push(app.discrepancy_reason);
+  }
+
+  // Decision: If any issues found → flag for clerk review. Otherwise → verified.
+  if (issues.length > 0) {
+    return {
+      verdict: issues.length >= 2 ? 'Risky — multiple issues detected' : 'Needs manual supervision',
+      proposed_status: 'Action_Required',
+      discrepancy_reason: issues.join(' | '),
+    };
+  }
+
+  return {
+    verdict: 'Safe to pass — no discrepancies found',
+    proposed_status: 'Verified_by_AI',
+    discrepancy_reason: null,
+  };
+}
 
 async function runAIBatch() {
   try {
@@ -39,52 +90,32 @@ async function runAIBatch() {
 
     let routedToOfficer = 0;
     let routedToClerk = 0;
-    
-    // 2. Simulate AI Processing & Prepare batch updates
-    const updates = pendingApps.map((app) => {
-      // 70% chance of passing AI verification perfectly (Realistic AI behavior)
-      const isPerfectMatch = Math.random() > 0.3;
 
-      if (isPerfectMatch) {
+    // 2. Deterministic AI Processing — same input always gives same output
+    const evaluations = pendingApps.map((app) => {
+      const result = classifyApplication(app);
+
+      if (result.proposed_status === 'Verified_by_AI') {
         routedToOfficer++;
-        return {
-          id: app.id,
-          scheme_id: app.scheme_id, 
-          scheme_name: app.scheme_name, // Include required fields for successful upsert
-          status: 'Verified_by_AI',
-          discrepancy_reason: null,
-          is_manually_overridden: false
-        };
       } else {
         routedToClerk++;
-        // Pick a random realistic reason
-        const randomReason = DISCREPANCY_REASONS[Math.floor(Math.random() * DISCREPANCY_REASONS.length)];
-        return {
-          id: app.id,
-          scheme_id: app.scheme_id, 
-          scheme_name: app.scheme_name, // Include required fields for successful upsert
-          status: 'Action_Required',
-          discrepancy_reason: randomReason,
-          is_manually_overridden: false
-        };
       }
+
+      return {
+        ...app,
+        verdict: result.verdict,
+        proposed_status: result.proposed_status,
+        discrepancy_reason: result.discrepancy_reason,
+      };
     });
 
-    // 3. Perform Bulk Upsert
-    // Upsert with ID acts as an efficient bulk update for existing records
-    const { error: updateError } = await supabaseAdmin
-      .from('farmer_applications')
-      .upsert(updates, { onConflict: 'id' });
-
-    if (updateError) {
-      throw new Error(`Database update error: ${updateError.message}`);
-    }
-
+    // Return evaluations for the Human-in-the-Loop modal
     return NextResponse.json({
-      message: "AI Batch Processing Complete",
-      processed_count: updates.length,
+      message: "AI Batch Processing Complete. Awaiting Human Review.",
+      processed_count: evaluations.length,
       routed_to_officer: routedToOfficer,
       routed_to_clerk: routedToClerk,
+      evaluations,
       timestamp: new Date().toISOString()
     }, { status: 200 });
 

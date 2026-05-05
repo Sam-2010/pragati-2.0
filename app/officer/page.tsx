@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import FarmerTable from '@/components/officer/FarmerTable'
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageSwitcherMinimal } from "@/components/LanguageSwitcher";
 
 // Colors for charts
 const COLORS = ['#1B4332', '#2D6A4F', '#40916C', '#52B788', '#74C69D', '#95D5B2']
@@ -26,6 +28,7 @@ const RISK_COLORS: Record<string, string> = {
 }
 
 export default function OfficerDashboard() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'distress'>('overview')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -186,7 +189,7 @@ export default function OfficerDashboard() {
             <ShieldAlert className="w-8 h-8" />
             <h1 className="font-black text-2xl tracking-tighter uppercase">PRAGATI AI</h1>
           </div>
-          <p className="text-[10px] uppercase font-bold tracking-[0.2em] mt-2 text-[#95D5B2]">Maharashtra State Govt</p>
+          <p className="text-[10px] uppercase font-bold tracking-[0.2em] mt-2 text-[#95D5B2]">{t('official_portal')}</p>
         </div>
 
         <nav className="flex-1 p-6 space-y-3 mt-4">
@@ -195,21 +198,21 @@ export default function OfficerDashboard() {
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-bold transition-all ${activeTab === 'overview' ? 'bg-[#1B4332] text-white shadow-xl shadow-green-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
           >
             <LayoutDashboard className="w-5 h-5" />
-            Command Center
+            {t('command_center')}
           </button>
           <button 
             onClick={() => setActiveTab('applications')}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-bold transition-all ${activeTab === 'applications' ? 'bg-[#1B4332] text-white shadow-xl shadow-green-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
           >
             <ListChecks className="w-5 h-5" />
-            Review Queue
+            {t('review_queue')}
           </button>
           <button 
             onClick={() => setActiveTab('distress')}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-base font-bold transition-all ${activeTab === 'distress' ? 'bg-[#1B4332] text-white shadow-xl shadow-green-900/20' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
           >
             <HeartPulse className="w-5 h-5" />
-            Distress Watchlist
+            {t('distress_watchlist')}
           </button>
         </nav>
 
@@ -221,7 +224,7 @@ export default function OfficerDashboard() {
               </div>
               <div>
                 <p className="text-sm font-black text-slate-900">Officer Deshmukh</p>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Pune HQ</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t('tao')}</p>
               </div>
             </div>
             <button 
@@ -268,11 +271,12 @@ export default function OfficerDashboard() {
         {/* Header */}
         <header className="flex justify-between items-end mb-10 border-b border-slate-200 pb-8">
           <div>
-            <h2 className="text-4xl font-black text-slate-900 tracking-tight">Administrative Portal</h2>
-            <p className="text-slate-500 text-lg font-medium mt-1">Surveillance, Analysis & Predictive Welfare System</p>
+            <h2 className="text-4xl font-black text-slate-900 tracking-tight">{t('admin_portal')}</h2>
+            <p className="text-slate-500 text-lg font-medium mt-1">{t('surveillance_system')}</p>
           </div>
 
           <div className="flex items-center gap-4">
+            <LanguageSwitcherMinimal />
             {/* MahaDBT Mock Button */}
             <button 
               onClick={handleMahaDBTFetch}
@@ -280,7 +284,7 @@ export default function OfficerDashboard() {
               className="px-6 py-3 bg-[#1B4332] text-white rounded-2xl flex items-center gap-3 text-sm font-black hover:bg-[#2D6A4F] transition-all shadow-lg disabled:opacity-70 group"
             >
               {isMahaDBTLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5 group-hover:scale-110 transition-transform" />}
-              Fetch MahaDBT Data
+              {t('fetch_mahadbt')}
             </button>
 
             <button 
@@ -297,14 +301,14 @@ export default function OfficerDashboard() {
             {/* KPI Cards - Grid for quick scanning */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <KpiCard 
-                label="Queue Backlog" 
+                label={t('queue_backlog')} 
                 value={kpis.pendingApps} 
                 icon={<Clock className="w-6 h-6" />} 
                 trend="+5%" 
                 up={true}
               />
               <KpiCard 
-                label="Risk Red-Zone" 
+                label={t('risk_red_zone')} 
                 value={kpis.highRiskHeld} 
                 icon={<ShieldAlert className="w-6 h-6 text-red-600" />} 
                 trend="-2%" 
@@ -312,14 +316,14 @@ export default function OfficerDashboard() {
                 alert={kpis.highRiskHeld > 0}
               />
               <KpiCard 
-                label="Farmer Grievances" 
+                label={t('farmer_grievances')} 
                 value={kpis.openGrievances} 
                 icon={<MessageSquareText className="w-6 h-6" />} 
                 trend="+12" 
                 up={true}
               />
               <KpiCard 
-                label="SLA Compliance" 
+                label={t('sla_compliance')} 
                 value={`${kpis.slaCompliance}%`} 
                 icon={<CheckCircle className="w-6 h-6 text-emerald-600" />} 
                 trend="On Target" 
