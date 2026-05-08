@@ -91,14 +91,23 @@ export default function ApplicationHistoryPage() {
       // Update the database with the new URL
       const columnToUpdate = docType === 'Quotation' ? 'quotation_url' : 'receipt_url';
       
-      const { error: updateError } = await supabase
+      const { data: updatedApp, error: updateError } = await supabase
         .from('farmer_applications')
         .update({ [columnToUpdate]: publicUrl })
-        .eq('id', appId);
+        .eq('id', appId)
+        .select()
+        .single();
 
       if (updateError) throw updateError;
 
-      toast.success(`${docType} uploaded successfully!`);
+      if (updatedApp.quotation_url && updatedApp.receipt_url && (updatedApp.status === 'Verified_by_Clerk' || updatedApp.status === 'Approved')) {
+        await supabase.from('farmer_applications').update({ status: 'Pending_Phase_3' }).eq('id', appId);
+        toast.success(lang === "EN" ? "Both documents submitted for Phase 3 Audit!" : "दोन्ही कागदपत्रे टप्पा 3 ऑडिटसाठी सबमिट केली!");
+      } else {
+        toast.success(`${docType} uploaded successfully!`);
+      }
+      
+      fetchApplications();
       
     } catch (err: any) {
       toast.error(`Failed to upload ${docType}: ` + err.message);
@@ -149,7 +158,17 @@ export default function ApplicationHistoryPage() {
                   </div>
                 </div>
                 <div>
-                  {app.status === 'Verified_by_Clerk' || app.status === 'Approved' ? (
+                  {app.status === 'Sent_to_TAO' ? (
+                    <div className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg font-bold text-sm border border-purple-200">
+                      <CheckCircle2 size={18} />
+                      {lang === "EN" ? "Approved by Krushi Sevak sent for approval" : "कृषी सेवकाकडून मंजूर, मंजुरीसाठी पाठवले"}
+                    </div>
+                  ) : app.status === 'Pending_Phase_3' ? (
+                    <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm border border-blue-200">
+                      <Clock size={18} />
+                      {lang === "EN" ? "Documents submitted for Phase 3 audit" : "टप्पा ३ ऑडिटसाठी कागदपत्रे सबमिट केली"}
+                    </div>
+                  ) : app.status === 'Verified_by_Clerk' || app.status === 'Approved' ? (
                     <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg font-bold text-sm border border-green-200">
                       <CheckCircle2 size={18} />
                       {lang === "EN" ? "Approved by Clerk" : "कारकुनाकडून मंजूर"}

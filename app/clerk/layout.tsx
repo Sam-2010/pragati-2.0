@@ -65,9 +65,13 @@ export default function ClerkLayout({
               <LayoutDashboard size={18} />
               {t('dashboard')}
             </Link>
-            <Link href="/clerk/queue" className="flex items-center gap-3 px-3 py-2 text-sm text-white bg-emerald-600/10 border-l-2 border-emerald-500 rounded-r-lg font-medium">
-              <ClipboardList size={18} className="text-emerald-500" />
+            <Link href="/clerk/queue" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+              <ClipboardList size={18} />
               {t('exception_queue')}
+            </Link>
+            <Link href="/clerk/phase3" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+              <FileSearch size={18} />
+              Phase 3 Audits
             </Link>
             
             <div className="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('tools')}</div>
