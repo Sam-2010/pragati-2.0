@@ -13,7 +13,10 @@ import {
   X,
   FileCheck,
   Globe,
-  AlertTriangle
+  AlertTriangle,
+  ScanSearch,
+  AlertCircle,
+  BadgeCheck
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
@@ -66,13 +69,16 @@ export default function SchemeApplicationPage() {
   const schemeId = params?.schemeId as string;
   const scheme = SCHEMES_DATA[schemeId];
 
+
   const [isSubmittingAll, setIsSubmittingAll] = useState(false);
   const [files, setFiles] = useState<Record<string, File | null>>({});
-  const [uploadStatus, setUploadStatus] = useState<Record<string, "idle" | "uploading" | "success" | "error">>({});
+  const [uploadStatus, setUploadStatus] = useState<Record<string, "idle" | "uploading" | "success" | "error">>({}); 
   const [uploadedUrls, setUploadedUrls] = useState<Record<string, string>>({});
   const [errorMessages, setErrorMessages] = useState<Record<string, string>>({});
   const [lang, setLang] = useState<"EN" | "MR">("EN");
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [validationStatuses, setValidationStatuses] = useState<Record<string, ValidationStatus>>({});
+  const [validationResults, setValidationResults] = useState<Record<string, ValidationResult>>({});
 
   const supabase = createClient();
 
@@ -93,6 +99,36 @@ export default function SchemeApplicationPage() {
     };
     checkConnection();
   }, [supabase]);
+
+  const validateDocument = async (docName: string, file: File) => {
+    setValidationStatuses(prev => ({ ...prev, [docName]: "validating" }));
+    setValidationResults(prev => ({ ...prev, [docName]: { feedback: "Analysing with Gemini Vision..." } }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('expectedDocType', docName);
+      const res = await fetch('/api/validate-document', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setValidationStatuses(prev => ({ ...prev, [docName]: "error" }));
+        setValidationResults(prev => ({ ...prev, [docName]: { feedback: "AI validation unavailable — please ensure the document is correct before submitting." } }));
+        return;
+      }
+      const v = data.validation;
+      setValidationStatuses(prev => ({ ...prev, [docName]: v.overallStatus }));
+      setValidationResults(prev => ({ ...prev, [docName]: { feedback: v.feedback, detectedDocType: v.detectedDocType, blurDescription: v.blurDescription, typeMismatchReason: v.typeMismatchReason } }));
+      if (v.overallStatus === "wrong_type" || v.overallStatus === "blurry_and_wrong_type") {
+        toast.error(`Wrong document for "${docName}"`, { description: v.typeMismatchReason || `Detected: ${v.detectedDocType}` });
+      } else if (v.overallStatus === "blurry") {
+        toast.warning(`Blur detected in "${docName}"`, { description: v.blurDescription || "Please upload a clearer image." });
+      } else if (v.overallStatus === "clean") {
+        toast.success(`"${docName}" looks good!`);
+      }
+    } catch {
+      setValidationStatuses(prev => ({ ...prev, [docName]: "error" }));
+      setValidationResults(prev => ({ ...prev, [docName]: { feedback: "Validation service unavailable." } }));
+    }
+  };
 
   if (!scheme) {
     return <div className="p-8 text-center text-gray-500">Scheme not found.</div>;
@@ -247,11 +283,18 @@ export default function SchemeApplicationPage() {
             file={files[doc] || null}
             status={uploadStatus[doc] || "idle"}
             errorMessage={errorMessages[doc]}
-            onFileSelect={(file: File) => setFiles(prev => ({ ...prev, [doc]: file }))}
+            validationStatus={validationStatuses[doc] || "idle"}
+            validationResult={validationResults[doc]}
+            onFileSelect={(file: File) => {
+              setFiles(prev => ({ ...prev, [doc]: file }));
+              validateDocument(doc, file);
+            }}
             onFileRemove={() => {
               setFiles(prev => ({ ...prev, [doc]: null }));
               setUploadStatus(prev => ({ ...prev, [doc]: "idle" }));
               setErrorMessages(prev => ({ ...prev, [doc]: "" }));
+              setValidationStatuses(prev => ({ ...prev, [doc]: "idle" }));
+              setValidationResults(prev => ({ ...prev, [doc]: { feedback: "" } }));
             }}
             onSubmit={() => handleIndividualSubmit(doc)}
           />
@@ -286,12 +329,17 @@ export default function SchemeApplicationPage() {
   );
 }
 
+type ValidationStatus = "idle" | "validating" | "clean" | "blurry" | "wrong_type" | "blurry_and_wrong_type" | "error";
+interface ValidationResult { feedback: string; detectedDocType?: string; blurDescription?: string | null; typeMismatchReason?: string | null; }
+
 interface DocumentUploadCardProps {
   docName: string;
   lang: "EN" | "MR";
   file: File | null;
   status: "idle" | "uploading" | "success" | "error";
   errorMessage?: string;
+  validationStatus?: ValidationStatus;
+  validationResult?: ValidationResult;
   onFileSelect: (file: File) => void;
   onFileRemove: () => void;
   onSubmit: () => void;
@@ -302,11 +350,16 @@ function DocumentUploadCard({
   lang, 
   file, 
   status, 
-  errorMessage, 
+  errorMessage,
+  validationStatus = "idle",
+  validationResult,
   onFileSelect, 
   onFileRemove, 
   onSubmit 
 }: DocumentUploadCardProps) {
+  const isWrongType = validationStatus === "wrong_type" || validationStatus === "blurry_and_wrong_type";
+  const isBlurry = validationStatus === "blurry" || validationStatus === "blurry_and_wrong_type";
+  const isValidating = validationStatus === "validating";
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       onFileSelect(acceptedFiles[0]);
@@ -362,23 +415,63 @@ function DocumentUploadCard({
             </div>
           </div>
         ) : (
-          <div className={`border rounded-xl p-4 flex items-center justify-between shadow-inner
-            ${status === "success" ? "bg-green-100/50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="p-2 bg-white rounded border border-gray-100 shadow-sm">
-                <FileText className={status === "success" ? "text-green-600" : "text-[#1B4332]"} size={20} />
+          <>
+            <div className={`border rounded-xl p-4 flex items-center justify-between shadow-inner
+              ${status === "success" ? "bg-green-100/50 border-green-200" : isWrongType ? "bg-red-50 border-red-300" : isBlurry ? "bg-yellow-50 border-yellow-300" : "bg-gray-50 border-gray-200"}`}>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="p-2 bg-white rounded border border-gray-100 shadow-sm">
+                  <FileText className={status === "success" ? "text-green-600" : isWrongType ? "text-red-500" : isBlurry ? "text-yellow-600" : "text-[#1B4332]"} size={20} />
+                </div>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
+                  <span className="text-[10px] text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                </div>
               </div>
-              <div className="flex flex-col overflow-hidden">
-                <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
-                <span className="text-[10px] text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-              </div>
+              {status !== "success" && status !== "uploading" && (
+                <button onClick={onFileRemove} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                  <X size={18} />
+                </button>
+              )}
             </div>
-            {status !== "success" && status !== "uploading" && (
-              <button onClick={onFileRemove} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                <X size={18} />
-              </button>
+
+            {/* ── Gemini Validation Banner ── */}
+            {validationStatus !== "idle" && status !== "success" && (
+              <div className={`mt-3 rounded-xl px-4 py-3 flex items-start gap-3 text-xs font-medium border animate-in fade-in slide-in-from-bottom-1 duration-300
+                ${
+                  isValidating ? "bg-blue-50 border-blue-200 text-blue-700" :
+                  isWrongType ? "bg-red-50 border-red-300 text-red-700" :
+                  isBlurry ? "bg-yellow-50 border-yellow-300 text-yellow-800" :
+                  validationStatus === "clean" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+                  "bg-gray-50 border-gray-200 text-gray-500"
+                }`}>
+                <div className="mt-0.5 flex-shrink-0">
+                  {isValidating && <Loader2 size={14} className="animate-spin" />}
+                  {isWrongType && <AlertCircle size={14} />}
+                  {isBlurry && !isWrongType && <AlertTriangle size={14} />}
+                  {validationStatus === "clean" && <BadgeCheck size={14} />}
+                  {validationStatus === "error" && <ScanSearch size={14} />}
+                </div>
+                <div className="flex flex-col gap-1 flex-1">
+                  <span className="font-bold uppercase tracking-wide text-[10px]">
+                    {isValidating ? "Gemini Vision — Analysing..." :
+                     isWrongType ? "Wrong Document Type Detected" :
+                     isBlurry && !isWrongType ? "Image Quality Warning" :
+                     validationStatus === "clean" ? "Document Verified by AI" :
+                     "AI Validation Unavailable"}
+                  </span>
+                  <span className="leading-snug">{validationResult?.feedback}</span>
+                  {isWrongType && validationResult?.detectedDocType && (
+                    <span className="mt-1 inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px] font-bold w-fit">
+                      Detected: {validationResult.detectedDocType}
+                    </span>
+                  )}
+                  {isBlurry && validationResult?.blurDescription && (
+                    <span className="mt-0.5 text-yellow-700 text-[10px]">{validationResult.blurDescription}</span>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
+          </>
         )}
         
         {errorMessage && (
@@ -410,14 +503,21 @@ function DocumentUploadCard({
         
         {status !== "success" && (
           <button 
-            disabled={!file || status === "uploading"}
+            disabled={!file || status === "uploading" || isValidating || isWrongType}
             onClick={onSubmit}
+            title={isWrongType ? "Remove this file and upload the correct document type." : isValidating ? "Please wait for AI validation to complete." : ""}
             className={`px-6 py-2 rounded-lg font-bold text-xs transition-all shadow-sm
-              ${file && status !== "uploading"
+              ${file && status !== "uploading" && !isValidating && !isWrongType
                 ? "bg-[#1B4332] text-white hover:bg-[#274e3d] active:scale-95" 
                 : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"}`}
           >
-            {lang === "EN" ? "Submit Document" : "दस्तऐवज सबमिट करा"}
+            {isValidating ? (
+              <span className="flex items-center gap-1.5"><Loader2 size={11} className="animate-spin" />{lang === "EN" ? "Validating..." : "तपासत आहे..."}</span>
+            ) : isWrongType ? (
+              <span className="flex items-center gap-1.5"><AlertCircle size={11} />{lang === "EN" ? "Wrong Document" : "चुकीचा दस्तऐवज"}</span>
+            ) : (
+              lang === "EN" ? "Submit Document" : "दस्तऐवज सबमिट करा"
+            )}
           </button>
         )}
       </div>
