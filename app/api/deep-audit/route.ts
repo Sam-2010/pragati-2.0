@@ -30,32 +30,57 @@ export async function POST(req: Request) {
       throw new Error('Application or Farmer record not found.');
     }
 
-    // 2. Fetch Document Buffers from URLs
+    // 2. Fetch Document Buffers
     const imageBuffers: Buffer[] = [];
     const docTypes: string[] = [];
     const mimeTypes: string[] = [];
-    const docUrls = (app.document_urls || []) as string[];
-    
-    for (let i = 0; i < docUrls.length; i++) {
-        const url = docUrls[i];
-        try {
-          const urlObj = new URL(url);
-          const pathParts = urlObj.pathname.split('/public/');
-          if (pathParts.length < 2) continue;
-          
-          const fullPath = pathParts[1];
-          const bucket = fullPath.split('/')[0];
-          const filePath = decodeURIComponent(fullPath.split('/').slice(1).join('/'));
 
-          const { data, error } = await supabase.storage.from(bucket).download(filePath);
-          if (!error && data) {
-            imageBuffers.push(Buffer.from(await data.arrayBuffer()));
-            docTypes.push(`Document ${i+1}`);
-            mimeTypes.push(data.type);
-          }
-        } catch (e) {
-          console.error('[Deep Audit] Error downloading doc:', e);
+    // CASE A: Application has entries in the 'documents' table (KS Flow)
+    const { data: docs, error: docError } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('application_id', application_id);
+
+    if (docs && docs.length > 0) {
+      for (const doc of docs) {
+        const bucket = doc.file_url.includes('pragati-documents') ? 'documents' : 'schemes';
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .download(doc.file_url);
+        
+        if (!error && data) {
+          const arrayBuffer = await data.arrayBuffer();
+          imageBuffers.push(Buffer.from(arrayBuffer));
+          docTypes.push(doc.document_type || 'Document');
+          mimeTypes.push(data.type);
         }
+      }
+    }
+
+    // CASE B: Fallback to document_urls array (Farmer Portal Flow)
+    if (imageBuffers.length === 0) {
+      const docUrls = (app.document_urls || []) as string[];
+      for (let i = 0; i < docUrls.length; i++) {
+          const url = docUrls[i];
+          try {
+            const urlObj = new URL(url);
+            const pathParts = urlObj.pathname.split('/public/');
+            if (pathParts.length < 2) continue;
+            
+            const fullPath = pathParts[1];
+            const bucket = fullPath.split('/')[0];
+            const filePath = decodeURIComponent(fullPath.split('/').slice(1).join('/'));
+
+            const { data, error } = await supabase.storage.from(bucket).download(filePath);
+            if (!error && data) {
+              imageBuffers.push(Buffer.from(await data.arrayBuffer()));
+              docTypes.push(`Document ${i+1}`);
+              mimeTypes.push(data.type);
+            }
+          } catch (e) {
+            console.error('[Deep Audit] Error downloading doc:', e);
+          }
+      }
     }
 
     let audit_report: any;
