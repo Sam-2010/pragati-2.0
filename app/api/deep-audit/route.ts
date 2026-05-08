@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     // 2. Fetch Document Buffers from URLs
     const imageBuffers: Buffer[] = [];
     const docTypes: string[] = [];
+    const mimeTypes: string[] = [];
     const docUrls = (app.document_urls || []) as string[];
     
     for (let i = 0; i < docUrls.length; i++) {
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
           if (!error && data) {
             imageBuffers.push(Buffer.from(await data.arrayBuffer()));
             docTypes.push(`Document ${i+1}`);
+            mimeTypes.push(data.type);
           }
         } catch (e) {
           console.error('[Deep Audit] Error downloading doc:', e);
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
       };
 
       // 4. Send all documents to Gemini 1.5 Flash for cross-referencing
-      const nimVerdict = await evaluateDocumentsWithGemini(imageBuffers, docTypes, farmerDetails);
+      const nimVerdict = await evaluateDocumentsWithGemini(imageBuffers, docTypes, farmerDetails, mimeTypes);
 
       const statusMapped = nimVerdict.verdict === 'Verified' ? 'Safe' : (nimVerdict.verdict === 'Rejected' ? 'Rejected' : 'Manual_Review');
 

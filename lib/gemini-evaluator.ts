@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
 function getMimeType(buffer: Buffer): string {
-  if (buffer.length > 4) {
+  if (buffer.length > 12) {
     // PDF Magic Number: %PDF (25 50 44 46)
     if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
       return "application/pdf";
@@ -11,6 +11,15 @@ function getMimeType(buffer: Buffer): string {
     // PNG Magic Number: 89 50 4E 47
     if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
       return "image/png";
+    }
+    // JPEG Magic Number: FF D8 FF
+    if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+      return "image/jpeg";
+    }
+    // WebP Magic Number: RIFF ... WEBP
+    if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 && 
+        buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+      return "image/webp";
     }
   }
   return "image/jpeg"; // Default fallback
@@ -47,7 +56,8 @@ export async function evaluateDocumentsWithGemini(
     aadhaar_last4: string;
     survey_number: string;
     land_area: string;
-  }
+  },
+  mimeTypes?: string[]
 ): Promise<GeminiVerdict> {
   try {
     if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -105,11 +115,12 @@ Return ONLY valid JSON. No markdown. No explanation outside JSON.
     const imageParts: any[] = [];
     imageBuffers.forEach((buffer, index) => {
       const type = documentTypes[index] || "Unknown Document";
+      const mimeType = (mimeTypes && mimeTypes[index]) ? mimeTypes[index] : getMimeType(buffer);
       imageParts.push({ text: `Document ${index + 1} - ${type}:` });
       imageParts.push({
         inlineData: {
           data: buffer.toString("base64"),
-          mimeType: getMimeType(buffer)
+          mimeType: mimeType
         }
       });
     });

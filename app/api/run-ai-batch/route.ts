@@ -43,6 +43,7 @@ async function classifyApplicationWithGemini(app: any) {
     // 2. Download document buffers from Storage
     const imageBuffers: Buffer[] = [];
     const docTypes: string[] = [];
+    const mimeTypes: string[] = [];
 
     // CASE A: Application has entries in the 'documents' table (KS Flow)
     if (docs && docs.length > 0) {
@@ -56,6 +57,7 @@ async function classifyApplicationWithGemini(app: any) {
           const arrayBuffer = await data.arrayBuffer();
           imageBuffers.push(Buffer.from(arrayBuffer));
           docTypes.push(doc.document_type);
+          mimeTypes.push(data.type);
         }
       }
     } 
@@ -86,6 +88,7 @@ async function classifyApplicationWithGemini(app: any) {
                          filePath.includes('8A') ? '8A Ledger' : 
                          filePath.includes('Aadhaar') ? 'Aadhaar Card' : 'Document';
             docTypes.push(type);
+            mimeTypes.push(data.type);
           }
         } catch (e) {
           console.error("[Batch AI] URL Parse Error:", e);
@@ -113,7 +116,7 @@ async function classifyApplicationWithGemini(app: any) {
 
     // 4. Call Gemini 1.5 Flash
     console.log(`[Batch AI] Processing application ${app.id} with Gemini...`);
-    const result = await evaluateDocumentsWithGemini(imageBuffers, docTypes, farmerDetails);
+    const result = await evaluateDocumentsWithGemini(imageBuffers, docTypes, farmerDetails, mimeTypes);
 
     return {
       verdict: result.verdict,
