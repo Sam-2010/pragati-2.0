@@ -79,12 +79,22 @@ DOCUMENT CONTEXT:
 - Expected Land Area: ${farmerDetails.land_area} Ha
 - Aadhaar Last 4: ${farmerDetails.aadhaar_last4}
 
+NAME MATCHING RULES (Apply to all documents):
+- EXACT MATCH or ALLOWED VARIATIONS -> Name Check Passes. Allowed variations include:
+  1. Missing middle name in one document but present in another.
+  2. Presence/absence of regional suffixes (e.g., -bhau, -ji, -rao).
+  3. Phonetic matches across languages (e.g., Marathi transliteration differences like Patil vs Paatil).
+  4. Word order differences (e.g., Surname First Name vs First Name Surname).
+- SIMILAR NAMES -> Mark document as "Manual_Review_Required" (e.g., spelling differences that aren't purely phonetic).
+- MIDDLE NAME MISMATCH -> Mark document as "Rejected" (if completely different) or "Manual_Review_Required" (if similar).
+- COMPLETELY DIFFERENT NAMES -> Mark document as "Rejected".
+
 RULES FOR INDIVIDUAL DOCUMENTS:
 1. Evaluate EACH document individually.
-2. Aadhaar Card: Mark "Verified" if name mostly matches and last 4 digits match. Ignore land area or caste constraints for this document.
-3. 7/12 Extract: 7/12 extracts often have multiple joint owners (सामायिक खातेदार). You MUST find the specific farmer whose name matches the Aadhaar card/database. Then, find their INDIVIDUAL land holding. Mark "Verified" if their name is present. If their specific individual land holding is less than 0.20 Ha or greater than 6.0 Ha, mark this specific document as "Rejected".
-4. 8A Holding/Ledger: Mark "Verified" if name matches. However, if their total individual land area is less than 0.20 Ha or greater than 6.0 Ha, mark this specific document as "Rejected" (just like the 7/12 extract).
-5. Caste Certificate: Mark "Verified" if the caste is clearly SC (Scheduled Caste) or Nav-Boudha, and the name matches. If the caste is anything else, mark this specific document as "Rejected".
+2. Aadhaar Card: Apply Name Matching Rules. Last 4 digits must also match. Ignore land area or caste constraints for this document. If Name Check passes and digits match, mark "Verified".
+3. 7/12 Extract: 7/12 extracts often have multiple joint owners (सामायिक खातेदार). You MUST find the specific farmer whose name passes the Name Matching Rules. Then, find their INDIVIDUAL land holding. If their specific individual land holding is less than 0.20 Ha or greater than 6.0 Ha, mark this specific document as "Rejected". Otherwise, if name passes, mark "Verified".
+4. 8A Holding/Ledger: Apply Name Matching Rules. If their total individual land area is less than 0.20 Ha or greater than 6.0 Ha, mark this specific document as "Rejected". Otherwise, if name passes, mark "Verified".
+5. Caste Certificate: Apply Name Matching Rules. The caste must also clearly be SC (Scheduled Caste) or Nav-Boudha. If the caste is anything else, mark this specific document as "Rejected". Otherwise, if name passes, mark "Verified".
 6. Missing documents do NOT fail the documents that are already provided.
 
 You must return a "document_evaluations" array containing exactly one evaluation per input document, in the exact same order they were provided.
