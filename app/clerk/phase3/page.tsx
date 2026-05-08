@@ -107,9 +107,10 @@ export default function Phase3QueuePage() {
 
   const handleFinalApprove = async (appId: string) => {
     try {
+      // Clear the audit JSON from discrepancy_reason so it doesn't leak downstream
       const { error } = await supabase
         .from('farmer_applications')
-        .update({ status: 'Sent_to_TAO' })
+        .update({ status: 'Sent_to_TAO', discrepancy_reason: null })
         .eq('id', appId);
 
       if (error) throw error;
@@ -120,12 +121,19 @@ export default function Phase3QueuePage() {
     }
   };
 
-  const handleReject = async (appId: string) => {
+  const handleReject = async (app: any) => {
     try {
+      // Preserve the AI audit result as the rejection reason so the farmer can see it
+      let reason = app.discrepancy_reason || null;
+      // If the audit result doesn't already exist, store a generic reason
+      if (!reason) {
+        reason = JSON.stringify({ flag: 'CLERK_REJECTED', reason: 'Application was rejected by the Clerk during Phase 3 review.' });
+      }
+
       const { error } = await supabase
         .from('farmer_applications')
-        .update({ status: 'Rejected' })
-        .eq('id', appId);
+        .update({ status: 'Rejected', discrepancy_reason: reason })
+        .eq('id', app.id);
 
       if (error) throw error;
       toast.success("Application rejected");
@@ -184,7 +192,7 @@ export default function Phase3QueuePage() {
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => handleReject(app.id)}
+                      onClick={() => handleReject(app)}
                       className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
                     >
                       Reject

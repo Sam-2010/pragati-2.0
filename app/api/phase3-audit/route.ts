@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req: Request) {
   try {
@@ -18,6 +14,9 @@ export async function POST(req: Request) {
     // Function to fetch and convert image to base64
     const fetchImage = async (url: string) => {
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to download document from storage (HTTP ${response.status}). URL may be expired or invalid.`);
+      }
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       return {

@@ -42,6 +42,8 @@ function getFriendlyReason(rawReason: string | null): string | null {
           return "The item on the quotation and receipt do not match. Both should be for the same product.";
         case "PRICE_MISMATCH":
           return "The price on the quotation and the receipt are different. Please check and re‑upload matching documents.";
+        case "CLERK_REJECTED":
+          return "Your application was reviewed and rejected by the Clerk. Please contact your local office for details.";
         default:
           return parsed.reason || null;
       }
