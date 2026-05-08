@@ -1,6 +1,48 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { AlertCircle, CheckCircle2, Clock, FileSpreadsheet, FileText } from "lucide-react";
+
+// Helper to convert technical AI flags / messages into farmer‑friendly text
+function getFriendlyReason(rawReason: string | null): string | null {
+  if (!rawReason) return null;
+  // If the stored reason is JSON (from AI audit), try to parse it
+  try {
+    const parsed = JSON.parse(rawReason);
+    // Expect structure { flag: "INVALID_GST_FORMAT", reason: "..." }
+    if (parsed.flag) {
+      switch (parsed.flag) {
+        case "INVALID_GST_FORMAT":
+          return "GST number is missing or not valid. Please upload a proper GST invoice.";
+        case "HP_THRESHOLD_EXCEEDED":
+          return "The machine’s horsepower exceeds the allowed limit for this subsidy.";
+        case "IDENTITY_MISMATCH":
+          return "The name on the document does not match your Aadhaar/7‑12 records.";
+        case "OUT_OF_JURISDICTION":
+          return "Document appears to be from outside Maharashtra. Please provide a Maharashtra document.";
+        case "INVALID_CURRENCY":
+          return "The amount is shown in a foreign currency. It must be in Indian Rupees (₹).";
+        case "PARSE_ERROR":
+          return "We could not read the document. Please upload a clearer copy.";
+        default:
+          return parsed.reason || null;
+      }
+    }
+    // If it's already a simple string reason
+    if (typeof parsed === "string") return parsed;
+  } catch (e) {
+    // Not JSON – treat as plain text, but still simplify known patterns
+    const lower = rawReason.toLowerCase();
+    if (lower.includes("gst")) return "Please ensure the GST number is correct and visible.";
+    if (lower.includes("hp")) return "Check that the machine’s horsepower is within the allowed limit.";
+    if (lower.includes("name")) return "Make sure the farmer’s name matches your Aadhaar/land records.";
+    if (lower.includes("currency")) return "Amount must be in Indian Rupees (₹).";
+    // fallback to original text
+    return rawReason;
+  }
+  return null;
+}
+
 import { createClient } from "@/lib/supabase/client";
 import { 
   FileText, 
@@ -174,9 +216,18 @@ export default function ApplicationHistoryPage() {
                       {lang === "EN" ? "Approved by Clerk" : "कारकुनाकडून मंजूर"}
                     </div>
                   ) : app.status === 'Rejected' ? (
-                    <div className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2 rounded-lg font-bold text-sm border border-red-200">
-                      <AlertCircle size={18} />
-                      {lang === "EN" ? "Rejected" : "नाकारले"}
+                    <div className="flex flex-col gap-1 bg-red-50 text-red-700 px-4 py-2 rounded-lg font-bold text-sm border border-red-200">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle size={18} />
+                        {lang === "EN" ? "Rejected" : "नाकारले"}
+                      </div>
+                      {app.discrepancy_reason && (
+                        <p className="text-xs text-red-600">
+                          {lang === "EN"
+                            ? `Reason: ${getFriendlyReason(app.discrepancy_reason)}`
+                            : `कारण: ${getFriendlyReason(app.discrepancy_reason)}`}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-lg font-bold text-sm border border-yellow-200">
