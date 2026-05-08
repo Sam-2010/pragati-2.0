@@ -395,6 +395,13 @@ export default function ClerkQueuePage() {
                           {t('awaiting_ai_batch')}
                         </p>
                       </div>
+                    ) : app.status === 'Verified_by_AI' || app.discrepancy_reason?.includes('Safe') ? (
+                      <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg flex items-start gap-2.5 max-w-md">
+                        <ShieldCheck size={16} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-[11px] font-medium text-emerald-900 leading-relaxed">
+                          {app.discrepancy_reason || "DEEP_AUDIT: Safe"}
+                        </p>
+                      </div>
                     ) : (
                       <div className="bg-red-50 border border-red-100 p-2.5 rounded-lg flex items-start gap-2.5 max-w-md">
                         <ShieldAlert size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
