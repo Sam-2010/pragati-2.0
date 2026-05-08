@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Use the same model that works across the rest of this codebase
+const GEMINI_MODEL = 'gemini-flash-latest'; // Same model as gemini-evaluator.ts (confirmed working)
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
 function detectMimeType(buffer: Buffer, fileMime: string): string {
@@ -17,6 +19,7 @@ export const maxDuration = 30;
 export async function POST(request: Request) {
   try {
     if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      console.error('[validate-document] GOOGLE_GENERATIVE_AI_API_KEY is not set');
       return NextResponse.json({ error: 'AI service not configured.' }, { status: 503 });
     }
 
@@ -28,6 +31,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing file or expectedDocType.' }, { status: 400 });
     }
 
+    console.log(`[validate-document] File: ${file.name} (${file.type}, ${file.size} bytes) | Expected: ${expectedDocType}`);
+
     // 10 MB hard limit
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: 'File too large. Max size is 10 MB.' }, { status: 400 });
@@ -37,7 +42,7 @@ export async function POST(request: Request) {
     const mimeType = detectMimeType(fileBuffer, file.type);
     const base64Data = fileBuffer.toString('base64');
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
     const prompt = `You are an AI document validator for a Maharashtra government agricultural scheme portal (MahaDBT).
 
@@ -98,13 +103,14 @@ Return ONLY valid JSON with no markdown, no explanation outside the JSON:
     ]);
 
     const rawText = result.response.text();
+    console.log('[validate-document] Gemini raw response:', rawText.slice(0, 400));
     const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
 
     let validation: any;
     try {
       validation = JSON.parse(cleanJson);
-    } catch {
-      console.error('[validate-document] Gemini returned non-JSON:', rawText.slice(0, 300));
+    } catch (parseErr) {
+      console.error('[validate-document] JSON parse failed. Raw text:', rawText.slice(0, 500));
       return NextResponse.json({ error: 'AI returned an unexpected response format.' }, { status: 500 });
     }
 
@@ -121,10 +127,11 @@ Return ONLY valid JSON with no markdown, no explanation outside the JSON:
       feedback: validation.feedback || 'Document checked.',
     };
 
+    console.log(`[validate-document] Result: ${sanitized.overallStatus} | Detected: ${sanitized.detectedDocType}`);
     return NextResponse.json({ success: true, validation: sanitized });
 
   } catch (error: any) {
-    console.error('[validate-document] Error:', error.message);
+    console.error('[validate-document] Unhandled error:', error?.message || error);
     return NextResponse.json(
       { error: error.message || 'Internal server error during validation.' },
       { status: 500 }
