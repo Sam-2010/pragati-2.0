@@ -102,11 +102,11 @@ export async function POST(req: Request) {
       // 5. Structure report for the UI
       audit_report = {
         overall_verdict: statusMapped,
-        document_evaluations: docUrls.map((url, idx) => {
+        document_evaluations: docTypes.map((type, idx) => {
           const docEval = nimVerdict.document_evaluations?.[idx];
           const docStatus = docEval?.status === 'Verified' ? 'Safe' : (docEval?.status === 'Rejected' ? 'Rejected' : 'Manual_Review');
           return {
-            document_name: docTypes[idx] || `Uploaded Document ${idx + 1}`,
+            document_name: type || `Uploaded Document ${idx + 1}`,
             status: docStatus || statusMapped,
             clerk_explanation: docEval?.reason || nimVerdict.reason
           };
