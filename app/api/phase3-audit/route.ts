@@ -44,6 +44,12 @@ export async function POST(req: Request) {
 
     const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
+    // Determine if water/land type checks are relevant for this subsidy
+    const isTractorOrImplements = /tractor|implement|rotavator|cultivator/i.test(subsidyReason || '');
+    const landWaterCheckNote = isTractorOrImplements
+      ? `NOTE: This is a Tractor/Implements subsidy. Rules 9 and 10 (water source check and land type check) are NOT APPLICABLE. Set waterSourceCheck and landTypeCheck to "NOT_APPLICABLE". Do not penalise the application for land type or water source.`
+      : `Apply Rules 9 and 10 strictly.`;
+
     const prompt = `
     You are Pragati AI, an expert agricultural subsidy auditor for the Government of Maharashtra.
     Your task is to analyze the provided documents for a farmer's subsidy application. 
@@ -80,6 +86,8 @@ export async function POST(req: Request) {
           * "Drip Irrigation", "Sprinkler Irrigation": Either type acceptable, but a water source must be present.
           * "Tractor", "Implements": Either land type acceptable. No restriction.
         - If land type does not match requirements, set landTypeCheck to "FAIL" and flag as "LAND_TYPE_MISMATCH".
+
+    ${landWaterCheckNote}
 
     Extract the following details from the documents:
     - farmerNameOnDoc: The farmer/customer name found on the documents

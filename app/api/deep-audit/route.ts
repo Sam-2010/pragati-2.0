@@ -91,7 +91,8 @@ export async function POST(req: Request) {
         name: app.farmer_name || app.farmer_id?.split('_')[1] || "Farmer",
         aadhaar_last4: app.aadhaar_last4 || app.farmer_id?.split('_').pop() || "0000",
         survey_number: app.survey_number || "Not Specified",
-        land_area: app.land_area || "Not Specified"
+        land_area: app.land_area || "Not Specified",
+        subsidy_reason: app.subsidy_reason || app.scheme_name || "Not Specified"
       };
 
       // 4. Send all documents to Gemini 1.5 Flash for cross-referencing

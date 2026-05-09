@@ -56,6 +56,7 @@ export async function evaluateDocumentsWithGemini(
     aadhaar_last4: string;
     survey_number: string;
     land_area: string;
+    subsidy_reason?: string;
   },
   mimeTypes?: string[]
 ): Promise<GeminiVerdict> {
@@ -78,6 +79,7 @@ DOCUMENT CONTEXT:
 - Expected Survey Number: ${farmerDetails.survey_number}  
 - Expected Land Area: ${farmerDetails.land_area} Ha
 - Aadhaar Last 4: ${farmerDetails.aadhaar_last4}
+- Subsidy Applied For: ${farmerDetails.subsidy_reason || 'Not Specified'}
 
 NAME MATCHING RULES (Apply to all documents):
 - EXACT MATCH or ALLOWED VARIATIONS -> Name Check Passes. Allowed variations include:
@@ -92,7 +94,15 @@ NAME MATCHING RULES (Apply to all documents):
 RULES FOR INDIVIDUAL DOCUMENTS:
 1. Evaluate EACH document individually.
 2. Aadhaar Card: Apply Name Matching Rules. Last 4 digits must also match. Ignore land area or caste constraints for this document. If Name Check passes and digits match, mark "Verified".
-3. 7/12 Extract: 7/12 extracts often have multiple joint owners (सामायिक खातेदार). You MUST find the specific farmer whose name passes the Name Matching Rules. Then, find their INDIVIDUAL land holding. If their specific individual land holding is less than 0.20 Ha or greater than 6.0 Ha, mark this specific document as "Rejected". Otherwise, if name passes, mark "Verified".
+3. 7/12 Extract: 7/12 extracts often have multiple joint owners (सामायिक खातेदार). You MUST find the specific farmer whose name passes the Name Matching Rules. Then:
+   a. Check their INDIVIDUAL land holding is between 0.20 Ha and 6.0 Ha.
+   b. Check land type (Jirayat = Dryland, Bagayat = Irrigated) against the subsidy:
+      - "New Well" or "Farm Pond": Land MUST be Jirayat. Reject if Bagayat.
+      - "Old Well Repair", "In-well Boring", "Pump Set", "Electricity Connection": Land MUST be Bagayat. Reject if Jirayat.
+      - "Tractor", "Implements": No land type restriction. Accept either.
+      - "Drip Irrigation", "Sprinkler Irrigation": No land type restriction, but note the type.
+      - If subsidy is "Not Specified": Skip land type check.
+   c. Mark "Verified" if land size and land type checks pass, otherwise "Rejected".
 4. 8A Holding/Ledger: Apply Name Matching Rules. If their total individual land area is less than 0.20 Ha or greater than 6.0 Ha, mark this specific document as "Rejected". Otherwise, if name passes, mark "Verified".
 5. Caste Certificate: Apply Name Matching Rules. The caste must also clearly be SC (Scheduled Caste) or Nav-Boudha. If the caste is anything else, mark this specific document as "Rejected". Otherwise, if name passes, mark "Verified".
 6. Missing documents do NOT fail the documents that are already provided.
