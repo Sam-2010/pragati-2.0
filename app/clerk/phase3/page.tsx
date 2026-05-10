@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
 import { useDropzone } from "react-dropzone";
+import imageCompression from "browser-image-compression";
 
 export default function Phase3QueuePage() {
   const [applications, setApplications] = useState<any[]>([]);
@@ -232,12 +233,21 @@ export default function Phase3QueuePage() {
   const handlePhotoUpload = async (appId: string, file: File) => {
     setUploadingPhotoFor(appId);
     try {
-      const fileExt = file.name.split('.').pop();
+      // Supabase 'schemes' bucket has a 5MB limit, so we compress first
+      const options = {
+        maxSizeMB: 4.5, // keep it safely under 5MB
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+      
+      const compressedFile = await imageCompression(file, options);
+      
+      const fileExt = compressedFile.name.split('.').pop() || 'jpeg';
       const fileName = `${Date.now()}_phase3_photo_${appId}.${fileExt}`;
       
       const { data, error } = await supabase.storage
         .from('schemes')
-        .upload(fileName, file);
+        .upload(fileName, compressedFile);
 
       if (error) throw error;
 
