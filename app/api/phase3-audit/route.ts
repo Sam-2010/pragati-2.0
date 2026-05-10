@@ -179,12 +179,14 @@ export async function POST(req: Request) {
           ]) as any;
           return await result.response;
         } catch (error: any) {
-          if (error.message?.includes('503') || error.message?.includes('timeout') || error.status === 503) {
+          if (error.message?.includes('503') || error.message?.includes('timeout') || error.message?.includes('429') || error.status === 503 || error.status === 429) {
             attempt++;
             if (attempt >= maxRetries) throw error;
-            console.warn(`[Phase 3 Audit] Attempt ${attempt} failed with 503/timeout. Retrying in ${delay}ms...`);
-            await new Promise(res => setTimeout(res, delay));
-            delay *= 2;
+            // If it's a rate limit error, wait at least 25 seconds
+            let currentDelay = error.message?.includes('429') ? Math.max(delay, 25000) : delay;
+            console.warn(`[Phase 3 Audit] Attempt ${attempt} failed with 503/429/timeout. Retrying in ${currentDelay}ms...`);
+            await new Promise(res => setTimeout(res, currentDelay));
+            delay = currentDelay * 2;
           } else {
             throw error;
           }
