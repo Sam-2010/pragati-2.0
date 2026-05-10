@@ -5,13 +5,15 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: Request) {
   try {
-    const { appId, receiptUrl, farmerName, subsidyReason, documentUrls } = await req.json();
+    const { appId, receiptUrl, farmerName, subsidyReason, documentUrls, inspectionPhotoUrl } = await req.json();
 
     if (!receiptUrl) {
       return NextResponse.json({ success: false, error: "Missing receipt document" }, { status: 400 });
     }
+    if (!inspectionPhotoUrl) {
+      return NextResponse.json({ success: false, error: "Missing inspection photo" }, { status: 400 });
+    }
 
-    // Function to fetch and convert image to base64
     const fetchImage = async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {
@@ -28,6 +30,7 @@ export async function POST(req: Request) {
     };
 
     const receiptPart = await fetchImage(receiptUrl);
+    const inspectionPhotoPart = await fetchImage(inspectionPhotoUrl);
     
     const initialDocParts: { inlineData: { data: string; mimeType: string } }[] = [];
     if (documentUrls && Array.isArray(documentUrls)) {
@@ -78,7 +81,8 @@ export async function POST(req: Request) {
     Your task is to analyze the provided documents for a farmer's subsidy application. 
     You will receive several images:
     - Any initial documents provided (Aadhaar, 7/12 land records, etc.)
-    - The Payment Receipt/Invoice (last image)
+    - The Payment Receipt/Invoice
+    - The Inspection Photo (last image), which is a geo-tagged photo taken on site.
 
     Farmer Details:
     - Name: ${farmerName}
@@ -91,6 +95,10 @@ export async function POST(req: Request) {
     3. Currency: The currency must be INR. No foreign currency allowed.
     4. Price limits: Check if the price seems reasonable for a ${subsidyReason}.
     5. Initial Document Checks: Ensure Aadhaar shows proper ID. For 7/12 and 8A land records, verify land ownership is between 0.20 Ha and 6.0 Ha. For Caste Certificate, ensure the caste is SC (Scheduled Caste) or Nav-Boudha. If any initial document violates these constraints, flag it.
+    6. Inspection Photo Checks:
+       - Humans: The photo MUST have a minimum of 2 humans visible (one representing the Krushi Sahayak and one representing the farmer). You do not need to verify their faces or clothing specifically, just the presence of at least 2 people. If fewer than 2 people are present, flag as "PHOTO_MISSING_PEOPLE".
+       - Equipment/Context: The equipment or site shown in the photo must look similar to the requested subsidy (${subsidyReason}). If it completely mismatches (e.g., applying for a pump set but showing a tractor), flag as "PHOTO_EQUIPMENT_MISMATCH".
+       - Location & Date: If there is a GPS/timestamp overlay on the photo, verify that the date looks recent and the location seems like a farm. If it looks fake or heavily edited, flag it. If no stamp is visible, but it generally looks like a farm, you can pass this check.
     8. Subsidy-Specific Land Record Checks (BAKSY Rules):
        - If applying for a "New Well" (Navin Vihir), the 7/12 extract MUST NOT show any existing well.
        - If applying for "Old Well Repair" (Juni Vihir Durusti) or "Pump Set", the 7/12 extract MUST explicitly show an existing water source (like a well or borewell).
@@ -121,11 +129,13 @@ export async function POST(req: Request) {
     - landTypeCheck: "PASS" or "FAIL" or "NOT_APPLICABLE" — based on Rule 10 above
     - casteDetected: The caste found in the Caste Certificate
     - aadhaarValid: "Yes" or "No"
+    - photoPeopleCount: Number of people detected in the inspection photo (e.g. "2", "1", "0")
+    - photoEquipmentMatch: "Yes" or "No" based on whether the photo matches the subsidy reason
 
     Respond ONLY with a JSON object (no markdown code blocks, no extra text, just raw JSON):
     {
       "verdict": "Verified" or "Rejected",
-      "flag": "CLEAN" or "INVALID_GST_FORMAT" or "IDENTITY_MISMATCH" or "OUT_OF_JURISDICTION" or "INVALID_CURRENCY" or "EQUIPMENT_MISMATCH" or "ITEM_MISMATCH" or "PRICE_MISMATCH" or "INITIAL_DOCS_INVALID" or "WATER_SOURCE_MISMATCH" or "LAND_TYPE_MISMATCH",
+      "flag": "CLEAN" or "INVALID_GST_FORMAT" or "IDENTITY_MISMATCH" or "OUT_OF_JURISDICTION" or "INVALID_CURRENCY" or "EQUIPMENT_MISMATCH" or "ITEM_MISMATCH" or "PRICE_MISMATCH" or "INITIAL_DOCS_INVALID" or "WATER_SOURCE_MISMATCH" or "LAND_TYPE_MISMATCH" or "PHOTO_MISSING_PEOPLE" or "PHOTO_EQUIPMENT_MISMATCH",
       "reason": "Detailed explanation of your findings",
       "extractedDetails": {
         "farmerNameOnDoc": "...",
@@ -140,7 +150,9 @@ export async function POST(req: Request) {
         "waterSourceCheck": "...",
         "landTypeCheck": "...",
         "casteDetected": "...",
-        "aadhaarValid": "..."
+        "aadhaarValid": "...",
+        "photoPeopleCount": "...",
+        "photoEquipmentMatch": "..."
       }
     }
     `;
@@ -160,7 +172,8 @@ export async function POST(req: Request) {
             model.generateContent([
               prompt,
               ...initialDocParts,
-              receiptPart
+              receiptPart,
+              inspectionPhotoPart
             ]),
             timeoutPromise
           ]) as any;

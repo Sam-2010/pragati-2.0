@@ -42,6 +42,10 @@ function getFriendlyReason(rawReason: string | null): string | null {
           return "The item on the receipt does not match the approved subsidy. Please upload the correct receipt.";
         case "PRICE_MISMATCH":
           return "The price on the receipt appears incorrect. Please re‑upload the correct receipt.";
+        case "PHOTO_MISSING_PEOPLE":
+          return "The inspection photo must clearly show both you (the farmer) and the Krushi Sahayak. Please take the photo again.";
+        case "PHOTO_EQUIPMENT_MISMATCH":
+          return "The site/equipment shown in the inspection photo does not match the requested subsidy. Please verify.";
         case "CLERK_REJECTED":
           return parsed.reason || "Your application was reviewed and rejected. Please contact your local office for details.";
         case "TAO_REJECTED":

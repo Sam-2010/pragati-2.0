@@ -12,10 +12,14 @@ import {
   Ban,
   Receipt,
   Clock,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Upload,
+  Camera
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
+import { useDropzone } from "react-dropzone";
+import { uploadDocumentAction } from "@/app/actions/farmer-actions";
 
 export default function Phase3QueuePage() {
   const [applications, setApplications] = useState<any[]>([]);
@@ -23,6 +27,8 @@ export default function Phase3QueuePage() {
   const [auditingAppId, setAuditingAppId] = useState<string | null>(null);
   const [auditFailedAppIds, setAuditFailedAppIds] = useState<string[]>([]);
   const [calculatedSubsidies, setCalculatedSubsidies] = useState<Record<string, number>>({});
+  const [uploadedPhotos, setUploadedPhotos] = useState<Record<string, string>>({});
+  const [uploadingPhotoFor, setUploadingPhotoFor] = useState<string | null>(null);
   
   const calculateSubsidy = (app: any, aiResult: any) => {
     if (!aiResult || !aiResult.extractedDetails) return;
@@ -97,6 +103,12 @@ export default function Phase3QueuePage() {
   };
 
   const handleRunAudit = async (app: any) => {
+    const inspectionPhotoUrl = uploadedPhotos[app.id];
+    if (!inspectionPhotoUrl) {
+      toast.error("Please upload the inspection photo first.");
+      return;
+    }
+
     setAuditingAppId(app.id);
     const toastId = toast.loading("Running Pragati AI Phase 3 Audit...");
     
@@ -115,6 +127,7 @@ export default function Phase3QueuePage() {
           appId: app.id,
           receiptUrl: app.receipt_url,
           documentUrls: app.document_urls,
+          inspectionPhotoUrl: inspectionPhotoUrl,
           farmerName: farmerName,
           subsidyReason: app.subsidy_reason || app.scheme_name
         }),
@@ -127,10 +140,13 @@ export default function Phase3QueuePage() {
       if (!result.success) throw new Error(result.error);
 
       // Save the audit result
+      const newAuditResult = result.audit;
+      newAuditResult.inspectionPhotoUrl = inspectionPhotoUrl;
+      
       const { error: updateError } = await supabase
         .from('farmer_applications')
         .update({
-          discrepancy_reason: JSON.stringify(result.audit) // Reusing this field to store audit result for demo
+          discrepancy_reason: JSON.stringify(newAuditResult) // Reusing this field to store audit result for demo
         })
         .eq('id', app.id);
 
@@ -176,17 +192,33 @@ export default function Phase3QueuePage() {
         try {
           const auditData = JSON.parse(updatedDiscrepancyReason || '{}');
           auditData.calculatedSubsidy = subsidyAmount;
+          if (uploadedPhotos[app.id]) {
+            auditData.inspectionPhotoUrl = uploadedPhotos[app.id];
+          }
           updatedDiscrepancyReason = JSON.stringify(auditData);
         } catch (e) {
           console.error("Failed to append subsidy to discrepancy_reason", e);
         }
+      } else if (uploadedPhotos[app.id]) {
+         try {
+          const auditData = JSON.parse(updatedDiscrepancyReason || '{}');
+          auditData.inspectionPhotoUrl = uploadedPhotos[app.id];
+          updatedDiscrepancyReason = JSON.stringify(auditData);
+        } catch (e) {}
+      }
+
+      // Also append to document_urls so TAO can see it in the UI as a document
+      let newDocumentUrls = app.document_urls || [];
+      if (uploadedPhotos[app.id] && !newDocumentUrls.includes(uploadedPhotos[app.id])) {
+        newDocumentUrls = [...newDocumentUrls, uploadedPhotos[app.id]];
       }
 
       const { error } = await supabase
         .from('farmer_applications')
         .update({ 
           status: 'Sent_to_TAO',
-          discrepancy_reason: updatedDiscrepancyReason
+          discrepancy_reason: updatedDiscrepancyReason,
+          document_urls: newDocumentUrls
         })
         .eq('id', app.id);
 
@@ -196,6 +228,76 @@ export default function Phase3QueuePage() {
     } catch (err: any) {
       toast.error("Failed to approve application");
     }
+  };
+
+  const handlePhotoUpload = async (appId: string, file: File) => {
+    setUploadingPhotoFor(appId);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_phase3_photo_${appId}.${fileExt}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileName', fileName);
+      
+      const uploadResult = await uploadDocumentAction(formData);
+      if (!uploadResult.success) throw new Error(uploadResult.error);
+      
+      setUploadedPhotos(prev => ({ ...prev, [appId]: uploadResult.publicUrl! }));
+      toast.success("Inspection photo uploaded successfully");
+    } catch (error: any) {
+      toast.error("Failed to upload photo: " + error.message);
+    } finally {
+      setUploadingPhotoFor(null);
+    }
+  };
+
+  const PhotoUploadZone = ({ appId }: { appId: string }) => {
+    const onDrop = React.useCallback((acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        handlePhotoUpload(appId, acceptedFiles[0]);
+      }
+    }, [appId]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+      onDrop,
+      multiple: false,
+      accept: { 'image/*': ['.jpeg', '.jpg', '.png'] }
+    });
+
+    const isUploading = uploadingPhotoFor === appId;
+    const uploadedUrl = uploadedPhotos[appId];
+
+    if (uploadedUrl) {
+      return (
+        <div className="flex items-center justify-between bg-green-50 p-3 rounded border border-green-200">
+          <div className="flex items-center gap-2 text-green-700">
+            <CheckCircle2 size={16} />
+            <span className="text-sm font-medium">Photo Uploaded</span>
+          </div>
+          <a href={uploadedUrl} target="_blank" rel="noreferrer" className="text-xs text-green-600 font-bold hover:underline">View</a>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        {...getRootProps()} 
+        className={`border-2 border-dashed rounded p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-center
+          ${isDragActive ? "border-emerald-500 bg-emerald-50" : "border-slate-300 hover:border-slate-400 hover:bg-slate-50"}
+          ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        <input {...getInputProps()} disabled={isUploading} />
+        {isUploading ? (
+          <Loader2 size={24} className="animate-spin text-slate-400" />
+        ) : (
+          <Camera size={24} className="text-slate-400" />
+        )}
+        <div className="text-xs text-slate-500">
+          <span className="font-bold text-slate-700">Upload Inspection Photo</span><br/>
+          (Farmer + Krushi Sahayak)
+        </div>
+      </div>
+    );
   };
 
   const handleReject = async (app: any) => {
@@ -287,9 +389,9 @@ export default function Phase3QueuePage() {
                         </button>
                         <button 
                           onClick={() => handleFinalApprove(app)}
-                          disabled={!aiResult && !auditFailedAppIds.includes(app.id)}
-                          className={`px-4 py-2 text-sm font-bold text-white rounded-lg transition-colors shadow-sm ${(!aiResult && !auditFailedAppIds.includes(app.id)) ? 'bg-slate-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-                          title={(!aiResult && !auditFailedAppIds.includes(app.id)) ? "You must run the Deep Audit before approving" : "Approve and send to TAO"}
+                          disabled={(!aiResult && !auditFailedAppIds.includes(app.id)) || !uploadedPhotos[app.id]}
+                          className={`px-4 py-2 text-sm font-bold text-white rounded-lg transition-colors shadow-sm ${((!aiResult && !auditFailedAppIds.includes(app.id)) || !uploadedPhotos[app.id]) ? 'bg-slate-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                          title={!uploadedPhotos[app.id] ? "You must upload the inspection photo first" : (!aiResult && !auditFailedAppIds.includes(app.id)) ? "You must run the Deep Audit before approving" : "Approve and send to TAO"}
                         >
                           {(!aiResult && auditFailedAppIds.includes(app.id)) ? "Force Approve (Audit Failed)" : "Approve & Send to TAO"}
                         </button>
@@ -324,6 +426,11 @@ export default function Phase3QueuePage() {
                           ) : (
                             <div className="p-3 bg-white rounded border border-slate-200 text-slate-400 text-sm italic">No receipt uploaded</div>
                           )}
+                        </div>
+                        
+                        <div className="mt-4 border-t border-slate-100 pt-4">
+                          <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><Camera size={16}/> Inspection Photo</h4>
+                          <PhotoUploadZone appId={app.id} />
                         </div>
                       </div>
 

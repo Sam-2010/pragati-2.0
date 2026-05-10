@@ -55,6 +55,14 @@ export default function TAODashboard() {
       const farmerNameMatch = app.farmer_id.match(/FARMER_(.*?)_\d{4}/);
       const farmerName = farmerNameMatch ? farmerNameMatch[1].replace(/_/g, ' ') : "Farmer";
 
+      let inspectionPhotoUrl = null;
+      if (app.discrepancy_reason) {
+        try {
+          const oldAudit = JSON.parse(app.discrepancy_reason);
+          inspectionPhotoUrl = oldAudit.inspectionPhotoUrl || null;
+        } catch(e) {}
+      }
+
       const response = await fetch('/api/phase3-audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,6 +70,7 @@ export default function TAODashboard() {
           appId: app.id,
           receiptUrl: app.receipt_url,
           documentUrls: app.document_urls,
+          inspectionPhotoUrl: inspectionPhotoUrl,
           farmerName: farmerName,
           subsidyReason: app.subsidy_reason || app.scheme_name
         })
@@ -77,6 +86,9 @@ export default function TAODashboard() {
           const oldAudit = JSON.parse(app.discrepancy_reason);
           if (oldAudit.calculatedSubsidy) {
             auditData.calculatedSubsidy = oldAudit.calculatedSubsidy;
+          }
+          if (oldAudit.inspectionPhotoUrl) {
+            auditData.inspectionPhotoUrl = oldAudit.inspectionPhotoUrl;
           }
         } catch(e) {}
       }
@@ -332,8 +344,12 @@ export default function TAODashboard() {
                         {app.document_urls && app.document_urls.length > 0 && app.document_urls.map((url: string, index: number) => {
                           // Try to extract a readable name, e.g., 'Aadhaar' or '7-12' from the URL, otherwise use a fallback
                           const fileNameRaw = url.split('/').pop() || '';
-                          const cleanName = fileNameRaw.includes('_') ? fileNameRaw.split('_').slice(2).join('_').split('.')[0] : `Initial Document ${index + 1}`;
-                          const displayTitle = cleanName.length > 2 ? cleanName.replace(/-/g, ' ') : `Initial Document ${index + 1}`;
+                          let cleanName = fileNameRaw.includes('_') ? fileNameRaw.split('_').slice(2).join('_').split('.')[0] : `Initial Document ${index + 1}`;
+                          let displayTitle = cleanName.length > 2 ? cleanName.replace(/-/g, ' ') : `Initial Document ${index + 1}`;
+                          
+                          if (fileNameRaw.includes('phase3_photo')) {
+                            displayTitle = "Phase 3 Inspection Photo";
+                          }
 
                           return (
                             <a key={index} href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 hover:border-blue-300 transition-colors group/link">
