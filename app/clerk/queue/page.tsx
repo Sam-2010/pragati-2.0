@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { updateApplicationStatus, executeBulkRouting } from '@/app/actions/clerk-actions';
+import { updateApplicationStatus } from '@/app/actions/clerk-actions';
 import { 
   AlertTriangle, 
   CheckCircle2, 
@@ -35,11 +35,33 @@ interface Application {
   id: string;
   farmer_id: string;
   scheme_name: string;
+  subsidy_reason: string;
   status: string;
   discrepancy_reason: string;
   document_urls: string[];
   created_at: string;
 }
+
+const SUBSIDY_REASONS_DICT: Record<string, { EN: string, MR: string }> = {
+  "Tractor": { EN: "Tractor", MR: "ट्रॅक्टर" },
+  "Power Tiller": { EN: "Power Tiller", MR: "पॉवर टिलर" },
+  "Rotavator": { EN: "Rotavator", MR: "रोटाव्हेटर" },
+  "Drip Irrigation System": { EN: "Drip Irrigation System", MR: "ठिबक सिंचन प्रणाली" },
+  "Sprinkler Irrigation System": { EN: "Sprinkler Irrigation System", MR: "तुषार सिंचन प्रणाली" },
+  "Solar Pump": { EN: "Solar Pump", MR: "सौर पंप" },
+  "New Well": { EN: "New Well", MR: "नवीन विहीर" },
+  "Old Well Repair": { EN: "Old Well Repair", MR: "जुनी विहीर दुरुस्ती" },
+  "In-well Boring": { EN: "In-well Boring", MR: "इन-वेल बोअरिंग" },
+  "Pump Set": { EN: "Pump Set", MR: "पंप संच" },
+  "Electricity Connection": { EN: "Electricity Connection", MR: "वीज जोडणी" },
+  "Plastic Lining": { EN: "Farm Pond Lining", MR: "शेततळे अस्तरीकरण" },
+};
+
+const getTranslatedReason = (reason: string, lang: string) => {
+  if (!reason) return "";
+  const l = lang === 'mr' ? 'MR' : 'EN';
+  return SUBSIDY_REASONS_DICT[reason]?.[l] || reason;
+};
 
 export default function ClerkQueuePage() {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -52,12 +74,6 @@ export default function ClerkQueuePage() {
   const [auditingAppId, setAuditingAppId] = useState<string | null>(null);
   const [auditResults, setAuditResults] = useState<Record<string, any>>({});
   const [selectedDocInfo, setSelectedDocInfo] = useState<any>(null);
-  
-  // Human-in-the-Loop Batch UI state
-  const [showBatchModal, setShowBatchModal] = useState(false);
-  const [batchEvaluations, setBatchEvaluations] = useState<any[]>([]);
-  const [clerkDecisions, setClerkDecisions] = useState<Record<string, 'Approve' | 'Hold' | 'Reject'>>({});
-  const [isBulkExecuting, setIsBulkExecuting] = useState(false);
 
   const router = useRouter();
   const { language, t } = useLanguage();
@@ -110,85 +126,6 @@ export default function ClerkQueuePage() {
       setLoading(false);
     }
   }
-
-  const handleTriggerAIBatch = async () => {
-    setIsAiBatchProcessing(true);
-    try {
-      const res = await fetch('/api/run-ai-batch', { method: 'POST' });
-      let data;
-      if (!res.ok && res.status === 405) {
-        const fallbackRes = await fetch('/api/run-ai-batch');
-        if (!fallbackRes.ok) throw new Error(`API returned ${fallbackRes.status}`);
-        data = await fallbackRes.json();
-      } else if (!res.ok) {
-        throw new Error(`API returned ${res.status}`);
-      } else {
-        data = await res.json();
-      }
-
-      if (data.evaluations && data.evaluations.length > 0) {
-        setBatchEvaluations(data.evaluations);
-        setClerkDecisions({});
-        setShowBatchModal(true);
-      } else {
-        toast.info("No pending applications to process.");
-      }
-    } catch (err: any) {
-      toast.error("Failed to trigger AI Batch: " + err.message);
-    } finally {
-      setIsAiBatchProcessing(false);
-    }
-  };
-
-  const handleExecuteBulkRouting = async () => {
-    if (Object.keys(clerkDecisions).length !== batchEvaluations.length) {
-      toast.error("Please make a decision for all applications before confirming.");
-      return;
-    }
-
-    setIsBulkExecuting(true);
-    try {
-      const decisions = batchEvaluations.map(ev => {
-        const decision = clerkDecisions[ev.id];
-        let finalStatus = 'Pending';
-        let reason = ev.discrepancy_reason;
-
-        if (decision === 'Approve') {
-          finalStatus = 'Verified_by_Clerk';
-          reason = null; 
-        } else if (decision === 'Hold') {
-          finalStatus = 'Action_Required';
-          reason = reason || 'Manually held by clerk for supervision';
-        } else if (decision === 'Reject') {
-          finalStatus = 'Rejected';
-          reason = reason || 'Rejected during manual review';
-        }
-
-        return {
-          id: ev.id,
-          status: finalStatus,
-          reason: reason
-        };
-      });
-
-      const res = await executeBulkRouting(decisions);
-      if (!res.success) throw new Error(res.error);
-
-      toast.success("Batch Routing Executed!", {
-        description: `Successfully processed ${decisions.length} applications.`,
-        icon: <CheckCircle2 className="text-emerald-500" />
-      });
-
-      setShowBatchModal(false);
-      setBatchEvaluations([]);
-      setClerkDecisions({});
-      await fetchExceptions();
-    } catch (err: any) {
-      toast.error("Bulk Routing Failed: " + err.message);
-    } finally {
-      setIsBulkExecuting(false);
-    }
-  };
 
   const handleDeepAudit = async (appId: string) => {
     if (auditResults[appId]) return;
@@ -340,18 +277,6 @@ export default function ClerkQueuePage() {
             <History size={14} />
             {t('refresh_queue')}
           </button>
-          <button 
-            onClick={handleTriggerAIBatch}
-            disabled={isAiBatchProcessing}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {isAiBatchProcessing ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Bot size={14} />
-            )}
-            {isAiBatchProcessing ? t('ai_processing') : t('trigger_ai')}
-          </button>
         </div>
       </div>
 
@@ -378,12 +303,17 @@ export default function ClerkQueuePage() {
                 <React.Fragment key={app.id}>
                 <tr className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-5">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col items-start">
                       <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <FileText size={14} className="text-slate-400" />
                         {app.farmer_id}
                       </span>
-                      <span className="text-xs text-slate-500 mt-1">{app.scheme_name}</span>
+                      <span className="text-xs text-slate-500 mt-1 mb-1">{app.scheme_name}</span>
+                      {app.subsidy_reason && app.subsidy_reason !== 'General' && (
+                        <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200 shadow-sm mt-0.5 mb-1.5">
+                          {getTranslatedReason(app.subsidy_reason, language)}
+                        </span>
+                      )}
                       <span className="text-[10px] text-slate-400 mt-0.5">{new Date(app.created_at).toLocaleDateString()}</span>
                     </div>
                   </td>
@@ -651,143 +581,6 @@ export default function ClerkQueuePage() {
         </div>
       )}
 
-      {/* Human-in-the-Loop AI Batch Review Modal */}
-      {showBatchModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="bg-slate-900 p-6 flex items-center justify-between text-white shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-                  <Bot size={24} className="text-indigo-400" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">{t('ai_batch_review')}</h3>
-                  <p className="text-sm text-slate-300">{t('human_supervision')}</p>
-                </div>
-              </div>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-center">
-                <p className="text-[10px] uppercase font-bold text-slate-400">{t('total_processed')}</p>
-                <p className="text-xl font-bold text-white leading-none mt-1">{batchEvaluations.length}</p>
-              </div>
-            </div>
-
-            {/* Modal Body - Scrollable */}
-            <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
-              <div className="space-y-4">
-                {batchEvaluations.map((app) => (
-                  <div key={app.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                          <FileText size={14} className="text-slate-400" />
-                          {app.farmer_id}
-                        </span>
-                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
-                          {app.scheme_name}
-                        </span>
-                      </div>
-                      
-                      <div className="mt-2">
-                        {app.verdict === 'Safe to pass & no suspicion' ? (
-                          <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded text-xs font-medium">
-                            <CheckCircle2 size={12} />
-                            {t('ai_verdict_label')}: {app.verdict}
-                          </div>
-                        ) : app.verdict === 'Needs manual supervision' ? (
-                          <div className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded text-xs font-medium">
-                            <AlertTriangle size={12} />
-                            {t('ai_verdict_label')}: {app.verdict}
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded text-xs font-medium">
-                            <ShieldAlert size={12} />
-                            {t('ai_verdict_label')}: {app.verdict}
-                          </div>
-                        )}
-                        
-                        {app.discrepancy_reason && (
-                          <p className="text-[11px] text-slate-500 mt-1.5 max-w-lg">
-                            <span className="font-semibold text-slate-700">{t('ai_discrepancy')}:</span> {app.discrepancy_reason}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Decision Controls */}
-                    <div className="flex gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                      <button
-                        onClick={() => setClerkDecisions(prev => ({ ...prev, [app.id]: 'Approve' }))}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold transition-all ${
-                          clerkDecisions[app.id] === 'Approve' 
-                            ? 'bg-emerald-500 text-white shadow-sm' 
-                            : 'text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
-                        }`}
-                      >
-                        <Check size={14} /> {t('approve')}
-                      </button>
-                      <button
-                        onClick={() => setClerkDecisions(prev => ({ ...prev, [app.id]: 'Hold' }))}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold transition-all ${
-                          clerkDecisions[app.id] === 'Hold' 
-                            ? 'bg-amber-500 text-white shadow-sm' 
-                            : 'text-slate-500 hover:bg-amber-50 hover:text-amber-600'
-                        }`}
-                      >
-                        <Pause size={14} /> {t('hold')}
-                      </button>
-                      <button
-                        onClick={() => setClerkDecisions(prev => ({ ...prev, [app.id]: 'Reject' }))}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold transition-all ${
-                          clerkDecisions[app.id] === 'Reject' 
-                            ? 'bg-red-500 text-white shadow-sm' 
-                            : 'text-slate-500 hover:bg-red-50 hover:text-red-600'
-                        }`}
-                      >
-                        <X size={14} /> {t('reject')}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Footer (Sticky) */}
-            <div className="bg-white border-t border-slate-200 p-6 flex items-center justify-between shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <div className="flex -space-x-2 mr-2">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center border border-white text-emerald-600 z-30"><Check size={10} /></div>
-                  <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center border border-white text-amber-600 z-20"><Pause size={10} /></div>
-                  <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center border border-white text-red-600 z-10"><X size={10} /></div>
-                </div>
-                <span className="font-medium text-slate-700">{Object.keys(clerkDecisions).length}</span> 
-                {t('decided_of')} <span className="font-medium text-slate-700">{batchEvaluations.length}</span>
-              </div>
-              
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => {
-                    setShowBatchModal(false);
-                    setBatchEvaluations([]);
-                  }}
-                  disabled={isBulkExecuting}
-                  className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all"
-                >
-                  {t('discard_batch')}
-                </button>
-                <button 
-                  onClick={handleExecuteBulkRouting}
-                  disabled={isBulkExecuting || Object.keys(clerkDecisions).length !== batchEvaluations.length}
-                  className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 rounded-xl shadow-md transition-all flex items-center gap-2"
-                >
-                  {isBulkExecuting ? <Loader2 size={16} className="animate-spin" /> : <ClipboardCheck size={16} />}
-                  {t('confirm_execute')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Audit Detail Modal */}
       {selectedDocInfo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
