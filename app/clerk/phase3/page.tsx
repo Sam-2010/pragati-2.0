@@ -21,6 +21,43 @@ export default function Phase3QueuePage() {
   const [loading, setLoading] = useState(true);
   const [auditingAppId, setAuditingAppId] = useState<string | null>(null);
   const [auditFailedAppIds, setAuditFailedAppIds] = useState<string[]>([]);
+  const [calculatedSubsidies, setCalculatedSubsidies] = useState<Record<string, number>>({});
+  
+  const calculateSubsidy = (app: any, aiResult: any) => {
+    if (!aiResult || !aiResult.extractedDetails) return;
+    
+    const qPriceRaw = aiResult.extractedDetails.quotedPrice || "0";
+    const rPriceRaw = aiResult.extractedDetails.receiptPrice || "0";
+    
+    const qPrice = parseFloat(qPriceRaw.toString().replace(/[^0-9.]/g, "")) || 0;
+    const rPrice = parseFloat(rPriceRaw.toString().replace(/[^0-9.]/g, "")) || 0;
+    
+    // Fallback: If one is 0, use the other. If both exist, use the minimum.
+    const actualCost = Math.min(qPrice, rPrice) > 0 ? Math.min(qPrice, rPrice) : Math.max(qPrice, rPrice);
+    let subsidyAmount = 0;
+    
+    const reason = (app.subsidy_reason || app.scheme_name || "").toLowerCase();
+    
+    if (reason.includes('new well') || reason.includes('navin vihir')) {
+      subsidyAmount = Math.min(actualCost * 1.0, 400000);
+    } else if (reason.includes('old well') || reason.includes('juni vihir') || reason.includes('repair')) {
+      subsidyAmount = Math.min(actualCost * 1.0, 100000);
+    } else if (reason.includes('pump set')) {
+      subsidyAmount = Math.min(actualCost * 0.9, 40000);
+    } else if (reason.includes('boring')) {
+      subsidyAmount = Math.min(actualCost * 1.0, 40000);
+    } else if (reason.includes('farm pond') || reason.includes('lining')) {
+      subsidyAmount = Math.min(actualCost * 0.9, 200000);
+    } else if (reason.includes('solar')) {
+      subsidyAmount = Math.min(actualCost * 0.9, 50000);
+    } else if (reason.includes('electricity')) {
+      subsidyAmount = Math.min(actualCost * 1.0, 20000);
+    } else {
+      subsidyAmount = Math.min(actualCost * 0.9, 100000); // generic fallback
+    }
+    
+    setCalculatedSubsidies(prev => ({ ...prev, [app.id]: Math.round(subsidyAmount) }));
+  };
   
   const { language } = useLanguage();
   const lang = language === "en" ? "EN" : "MR";
@@ -285,6 +322,24 @@ export default function Phase3QueuePage() {
                                   <li><span className="font-semibold text-slate-500">Caste:</span> {aiResult.extractedDetails.casteDetected}</li>
                                   <li><span className="font-semibold text-slate-500">Aadhaar:</span> {aiResult.extractedDetails.aadhaarValid}</li>
                                 </ul>
+                                
+                                {aiResult.verdict === 'Verified' && (
+                                  <div className="mt-4 pt-3 border-t border-emerald-200/50">
+                                    {calculatedSubsidies[app.id] !== undefined ? (
+                                      <div className="bg-emerald-100/50 p-3 rounded-lg flex items-center justify-between border border-emerald-200">
+                                        <span className="font-bold text-emerald-800">Approved Subsidy Amount:</span>
+                                        <span className="text-lg font-black text-emerald-600">₹{calculatedSubsidies[app.id].toLocaleString()}</span>
+                                      </div>
+                                    ) : (
+                                      <button 
+                                        onClick={() => calculateSubsidy(app, aiResult)}
+                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors shadow-sm"
+                                      >
+                                        Calculate Subsidy Amount
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
