@@ -51,22 +51,22 @@ export async function POST(req: Request) {
     // Per-subsidy rule matrix for BAKSY scheme
     const s = (subsidyReason || '').toLowerCase();
 
-    // Rule 9: Water source check — only original well/boring/pump/electricity components need this.
-    // Drip/Sprinkler, Water Supply Pipe, and Storage Tank do NOT require a water source check.
+    // Rule 9: Water source check.
+    // Drip/Sprinkler, Water Supply Pipe, and Storage Tank are DOWNSTREAM components —
+    // they require an existing water source (well/pump) to function. Water MUST exist.
+    // New Well is the only case where water must NOT exist.
     const needsWaterSourceCheck =
-      /new well|navin vihir|old well|juni vihir|boring|pump set|electricity connection/i.test(s);
-    // Rule 9 specifics: for new well, water must NOT exist. For others, water MUST exist.
+      /new well|navin vihir|old well|juni vihir|boring|pump set|electricity connection|drip|sprinkler|water supply pipe|storage tank/i.test(s);
     const waterSourceMustBeAbsent = /new well|navin vihir/i.test(s);
 
     // Rule 10: Land type check — only original well/pump/pond components have Jirayat/Bagayat rules.
     // Drip/Sprinkler, Water Supply Pipe, and Storage Tank have NO land type restriction.
     const needsLandTypeCheck =
       /new well|navin vihir|old well|juni vihir|boring|pump set|electricity connection|farm pond|plastic lining/i.test(s);
-    // Rule 10 specifics: which land type is required?
     const requiredLandType = (() => {
       if (/new well|navin vihir|farm pond|plastic lining/i.test(s)) return 'Jirayat';
       if (/old well|juni vihir|boring|pump set|electricity connection/i.test(s)) return 'Bagayat';
-      return null; // no restriction — applies to Drip/Sprinkler, Water Supply Pipe, Storage Tank
+      return null; // no restriction — Drip/Sprinkler, Water Supply Pipe, Storage Tank
     })();
 
     // Build instruction note to inject into prompt
@@ -103,11 +103,11 @@ export async function POST(req: Request) {
        - Humans: The photo MUST have a minimum of 2 humans visible (one representing the Krushi Sahayak and one representing the farmer). You do not need to verify their faces or clothing specifically, just the presence of at least 2 people. If fewer than 2 people are present, flag as "PHOTO_MISSING_PEOPLE".
        - Equipment/Context: The equipment or site shown in the photo must look similar to the requested subsidy (${subsidyReason}). If it completely mismatches (e.g., applying for a pump set but showing a tractor), flag as "PHOTO_EQUIPMENT_MISMATCH".
        - Location & Date: If there is a GPS/timestamp overlay on the photo, verify that the date looks recent and the location seems like a farm. If it looks fake or heavily edited, flag it. If no stamp is visible, but it generally looks like a farm, you can pass this check.
-    8. Subsidy-Specific Land Record Checks (BAKSY Rules):
-       - If applying for a "New Well" (Navin Vihir), the 7/12 extract MUST NOT show any existing well.
-       - If applying for "Old Well Repair" (Juni Vihir Durusti) or "Pump Set", the 7/12 extract MUST explicitly show an existing water source (like a well or borewell).
-       - If the 7/12 fails the subsidy-specific water source rules, flag the application as REJECTED with "WATER_SOURCE_MISMATCH".
-       - For "Drip/Sprinkler Irrigation", "Water Supply Pipe", and "Storage Tank/Sump": water source check is NOT APPLICABLE. Set waterSourceCheck to "NOT_APPLICABLE".
+    8. Subsidy-Specific Water Source Checks (BAKSY Rules):
+       - "New Well" (Navin Vihir): The 7/12 MUST NOT show any existing well. REJECT if a well is already present.
+       - "Old Well Repair", "In-well Boring", "Pump Set", "Electricity Connection": The 7/12 MUST show an existing water source. REJECT if absent.
+       - "Drip/Sprinkler Irrigation", "Water Supply Pipe", "Storage Tank/Sump": These are DOWNSTREAM components that feed from an existing well or pump. The 7/12 MUST show an existing water source. REJECT with "WATER_SOURCE_MISMATCH" if no water source is present.
+       - If the 7/12 fails the applicable water source rule, set waterSourceCheck to "FAIL" and flag as "WATER_SOURCE_MISMATCH".
      9. Jirayat/Bagayat Land Type Check (BAKSY Rules):
         - The 7/12 extract shows land type as "Jirayat" (Dryland / rain-fed) or "Bagayat" (Irrigated).
         - Rules based on subsidy type:
