@@ -12,7 +12,8 @@ import {
   Map as MapIcon,
   Bell,
   Settings,
-  ChevronRight
+  ChevronRight,
+  UserCheck
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageSwitcherMinimal } from '@/components/LanguageSwitcher';
@@ -60,6 +61,10 @@ export default function TAOLayout({
             <Link href="#" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
               <Search size={18} />
               Farmer Search
+            </Link>
+            <Link href="/tao/clerk-performance" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+              <UserCheck size={18} />
+              Clerk Performance
             </Link>
             <Link href="#" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
               <Settings size={18} />
