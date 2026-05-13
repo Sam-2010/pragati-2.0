@@ -11,31 +11,28 @@ export async function GET() {
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
-    // Fetch all applications. We select reviewed_by_clerk_id but handle
-    // gracefully if the column doesn't exist yet (migration not run).
+    // Fetch all applications including the clerk attribution column.
     const { data: apps, error } = await supabase
       .from('farmer_applications')
       .select('id, status, discrepancy_reason, created_at, updated_at, reviewed_by_clerk_id')
       .order('updated_at', { ascending: false });
 
-    // If the column doesn't exist yet, Supabase returns a column-not-found error.
-    // Fall back to fetching without that column so the page still loads.
     if (error) {
-      const isColumnMissing = error.message?.toLowerCase().includes('column') ||
-                              error.message?.toLowerCase().includes('does not exist') ||
-                              error.code === '42703';
-
-      if (isColumnMissing) {
-        // Migration hasn't been run — return empty state, don't crash
+      // PostgreSQL error code 42703 = undefined_column (migration not run yet)
+      if (error.code === '42703') {
         return NextResponse.json({
           clerks: [],
           summary: { total: 0, approved: 0, rejected: 0, pending: 0 },
           warning: 'reviewed_by_clerk_id column not found. Run the SQL migration first.'
         });
       }
-
       console.error('[clerk-performance] DB error:', error);
-      return NextResponse.json({ error: 'Failed to fetch applications' }, { status: 500 });
+      // Return safe empty state instead of 500
+      return NextResponse.json({
+        clerks: [],
+        summary: { total: 0, approved: 0, rejected: 0, pending: 0 },
+        error: error.message
+      });
     }
 
     if (!apps || apps.length === 0) {
