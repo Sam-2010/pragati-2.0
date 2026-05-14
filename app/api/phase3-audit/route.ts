@@ -134,8 +134,8 @@ export async function POST(req: Request) {
     - landHolding712: The land holding area found specifically in the 7/12 extract (e.g. "1.5 Ha")
     - landHolding8A: The total land holding area found specifically in the 8A ledger (e.g. "1.5 Ha")
     - cropType: The type of crop grown, if visible in the 7/12 extract (e.g. "Soybean, Cotton")
-    - landType712: "Jirayat" or "Bagayat" or "Mixed" as found in the 7/12 extract
-    - waterSourceOn712: "Well Present" or "Borewell Present" or "No Water Source" as found in the 7/12 extract
+    - landType712: "Jirayat" or "Bagayat" or "Mixed" (IMPORTANT: MUST match the Form 12 conclusion above! Do not just copy the top box.)
+    - waterSourceOn712: "Well Present" or "Borewell Present" or "No Water Source" (IMPORTANT: Look at Form 12 equipment like 'vhir'!)
     - waterSourceCheck: "PASS" or "FAIL" or "NOT_APPLICABLE" — based on Rule 9 above
     - landTypeCheck: "PASS" or "FAIL" or "NOT_APPLICABLE" — based on Rule 10 above
     - casteDetected: The caste found in the Caste Certificate
