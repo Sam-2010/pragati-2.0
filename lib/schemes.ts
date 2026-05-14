@@ -102,6 +102,87 @@ export const SCHEMES: Scheme[] = [
     },
     requiredDocs: ['Aadhaar', 'Bank Passbook Copy', 'Land Record (7/12)'],
     department: 'Subsidy Department'
+  },
+  {
+    id: 'nfsm',
+    name: 'National Food Security Mission (NFSM)',
+    nameMarathi: 'राष्ट्रीय अन्न सुरक्षा अभियान',
+    benefit: 'Subsidies for Food grains, Oil seeds, Sugarcane, Cotton',
+    benefitAmount: 'Crop specific subsidies',
+    eligibility: {
+      minLandHectares: 0.20
+    },
+    requiredDocs: ['Aadhaar', 'Land Record (7/12)', '8A Holding', 'Bank Passbook Copy'],
+    department: 'Agriculture Department'
+  },
+  {
+    id: 'cm-sustainable-irrigation',
+    name: 'Chief Minister Sustainable Agriculture Irrigation Scheme',
+    nameMarathi: 'मुख्यमंत्री शाश्वत कृषी सिंचन योजना',
+    benefit: 'Micro-irrigation and Farm Ponds',
+    benefitAmount: 'Up to 50% subsidy',
+    eligibility: {
+      minLandHectares: 0.20
+    },
+    requiredDocs: ['Aadhaar', 'Land Record (7/12)', '8A Holding'],
+    department: 'Agriculture Department'
+  },
+  {
+    id: 'rkvy-raftaar',
+    name: 'Rashtriya Krushi Vikas Yojana (RKVY - RAFTAAR)',
+    nameMarathi: 'राष्ट्रीय कृषी विकास योजना (रफ्तार)',
+    benefit: 'Plastic lining for farm ponds & infrastructure',
+    benefitAmount: 'Project specific',
+    eligibility: {
+      minLandHectares: 0.40
+    },
+    requiredDocs: ['Aadhaar', 'Land Record (7/12)', '8A Holding'],
+    department: 'Agriculture Department'
+  },
+  {
+    id: 'gopinath-munde-apghat',
+    name: 'Gopinath Munde Shetkari Apghat Suraksha Anudan Yojana',
+    nameMarathi: 'गोपीनाथ मुंडे शेतकरी अपघात विमा योजना',
+    benefit: 'Accidental Insurance for Farmers',
+    benefitAmount: 'Up to Rs. 2 Lakhs',
+    eligibility: {},
+    requiredDocs: ['Aadhaar', 'Land Record (7/12)', '8A Holding'],
+    department: 'Agriculture Department'
+  },
+  {
+    id: 'rainfed-area-dev',
+    name: 'Rainfed Area Development (RAD)',
+    nameMarathi: 'कोरडवाहू क्षेत्र विकास कार्यक्रम (RAD)',
+    benefit: 'Integrated farming system development',
+    benefitAmount: 'Varies by farming system',
+    eligibility: {
+      maxLandHectares: 5.0
+    },
+    requiredDocs: ['Aadhaar', 'Land Record (7/12)', '8A Holding'],
+    department: 'Agriculture Department'
+  },
+  {
+    id: 'jan-van-vikas',
+    name: 'Dr. Shyamprasad Mukherjee Jan-Van Vikas Scheme',
+    nameMarathi: 'डॉ. श्यामाप्रसाद मुखर्जी जन-वन विकास योजना',
+    benefit: 'Development of forest buffer zone villages',
+    benefitAmount: 'Varies',
+    eligibility: {},
+    requiredDocs: ['Aadhaar', 'Land Record (7/12)'],
+    department: 'Forest Department'
+  },
+  {
+    id: 'kaju-kalam-vatap',
+    name: 'Kaju Kalam Vatap Yojana',
+    nameMarathi: 'काजू कलम वाटप योजना',
+    benefit: 'Subsidized Cashew sapling distribution',
+    benefitAmount: '100% subsidy on saplings',
+    eligibility: {
+      minLandHectares: 0.20,
+      maxLandHectares: 4.0
+    },
+    requiredDocs: ['Aadhaar', 'Land Record (7/12)', '8A Holding'],
+    department: 'Horticulture Department'
   }
 ]
 
