@@ -16,32 +16,41 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { usePersistedForm } from "@/lib/usePersistedForm";
+import { farmerAadhaarLogin } from "@/app/login/actions";
 
 export default function FarmerPortal() {
   const [language, setLanguage] = useState("Marathi");
   const [loginType, setLoginType] = useState("individual");
   const router = useRouter();
 
-  const [formData, setFormData] = usePersistedForm("farmer_profile", {
-    aadhaar: "",
-    name: "",
-    mobile: "",
-    dob: "20/10/2006",
-    age: "19",
-    gender: "Male"
-  });
-
+  const [name, setName] = useState("");
+  const [aadhaar, setAadhaar] = useState("");
+  const [mobile, setMobile] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (!name || !aadhaar || aadhaar.replace(/\s/g, '').length !== 12) {
+      setError(language === "Marathi" ? "कृपया वैध नाव आणि 12-अंकी आधार क्रमांक प्रविष्ट करा." : "Please enter a valid name and 12-digit Aadhaar Number.");
+      return;
+    }
+
     setIsPending(true);
-    
-    setTimeout(() => {
+    const formData = new FormData();
+    formData.set('fullName', name);
+    formData.set('aadhaarNumber', aadhaar.replace(/\s/g, ''));
+
+    const result = await farmerAadhaarLogin(null, formData);
+    if (result?.error) {
+      setError(result.error);
+      setIsPending(false);
+    } else {
       toast.success(language === "Marathi" ? "लॉगिन यशस्वी!" : "Login Successful!");
       router.push('/farmer/dashboard/profile');
-    }, 1000);
+    }
   };
 
   return (
@@ -174,35 +183,39 @@ export default function FarmerPortal() {
             onSubmit={handleLogin} 
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
+            {error && (
+              <div className="md:col-span-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-bold">
+                {error}
+              </div>
+            )}
             <FormInput 
               name="farmerName"
               label={language === "Marathi" ? "शेतकऱ्याचे नाव" : "Farmer Name"} 
               placeholder={language === "Marathi" ? "पूर्ण नाव प्रविष्ट करा" : "Enter full name"}
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               required
             />
             <FormInput 
               name="aadhaarNumber"
               label={language === "Marathi" ? "आधार क्रमांक" : "Aadhaar Number"} 
               placeholder="XXXX XXXX XXXX"
-              value={formData.aadhaar}
-              onChange={(e) => setFormData({ ...formData, aadhaar: e.target.value })}
+              value={aadhaar}
+              onChange={(e) => setAadhaar(e.target.value)}
               required
             />
             <FormInput 
               name="mobileNumber"
               label={language === "Marathi" ? "मोबाईल क्रमांक" : "Mobile Number"} 
               placeholder="9876543210"
-              value={formData.mobile}
-              onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-              required
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
             />
 
             <div className="md:col-span-2 flex justify-end mt-4">
               <button 
                 type="submit"
-                disabled={isPending || !formData.name || !formData.aadhaar}
+                disabled={isPending || !name || !aadhaar}
                 className="bg-[#1B4332] text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-[#274e3d] transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-70 disabled:cursor-wait flex items-center gap-3"
               >
                 {isPending ? (
