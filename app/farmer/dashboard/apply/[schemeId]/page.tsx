@@ -56,6 +56,30 @@ export default function SchemeApplicationPage() {
   const [validationStatuses, setValidationStatuses] = useState<Record<string, ValidationStatus>>({});
   const [validationResults, setValidationResults] = useState<Record<string, ValidationResult>>({});
   const [subsidyReason, setSubsidyReason] = useState<string>("");
+  const [profileDocs, setProfileDocs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && scheme) {
+      const stored = window.localStorage.getItem("farmer_profile_docs");
+      if (stored) {
+        const pDocs = JSON.parse(stored);
+        setProfileDocs(pDocs);
+        
+        const initialUploads: Record<string, "success"> = {};
+        const initialUrls: Record<string, string> = {};
+        
+        scheme.documents.forEach((doc: string) => {
+          if (pDocs[doc]) {
+            initialUploads[doc] = "success";
+            initialUrls[doc] = pDocs[doc];
+          }
+        });
+        
+        setUploadStatus(initialUploads);
+        setUploadedUrls(initialUrls);
+      }
+    }
+  }, [scheme]);
 
   const SUBSIDY_REASONS = [
     { value: "New Well", label: { EN: "New Well", MR: "नवीन विहीर" } },
@@ -275,9 +299,14 @@ export default function SchemeApplicationPage() {
             errorMessage={errorMessages[doc]}
             validationStatus={validationStatuses[doc] || "idle"}
             validationResult={validationResults[doc]}
+            profileDocUrl={profileDocs[doc]}
             onFileSelect={(file: File) => {
               setFiles(prev => ({ ...prev, [doc]: file }));
               validateDocument(doc, file);
+              // if they upload a new file, we should reset the success state if it was loaded from profile
+              if (uploadStatus[doc] === "success" && !files[doc]) {
+                 setUploadStatus(prev => ({ ...prev, [doc]: "idle" }));
+              }
             }}
             onFileRemove={() => {
               setFiles(prev => ({ ...prev, [doc]: null }));
@@ -357,6 +386,7 @@ interface DocumentUploadCardProps {
   errorMessage?: string;
   validationStatus?: ValidationStatus;
   validationResult?: ValidationResult;
+  profileDocUrl?: string;
   onFileSelect: (file: File) => void;
   onFileRemove: () => void;
   onSubmit: () => void;
@@ -370,6 +400,7 @@ function DocumentUploadCard({
   errorMessage,
   validationStatus = "idle",
   validationResult,
+  profileDocUrl,
   onFileSelect, 
   onFileRemove, 
   onSubmit 
@@ -377,6 +408,8 @@ function DocumentUploadCard({
   const isWrongType = validationStatus === "wrong_type" || validationStatus === "blurry_and_wrong_type";
   const isBlurry = validationStatus === "blurry" || validationStatus === "blurry_and_wrong_type";
   const isValidating = validationStatus === "validating";
+  const isProfileSourced = status === "success" && !file && profileDocUrl;
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       onFileSelect(acceptedFiles[0]);
@@ -416,7 +449,7 @@ function DocumentUploadCard({
       </div>
 
       <div className="px-5 pb-5 flex-1">
-        {!file ? (
+        {(!file && !isProfileSourced) ? (
           <div 
             {...getRootProps()} 
             className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all
@@ -430,6 +463,11 @@ function DocumentUploadCard({
               <p className="text-sm font-bold text-gray-700">{lang === "EN" ? "Click or Drag & Drop" : "क्लिक करा किंवा ड्रॅग आणि ड्रॉप करा"}</p>
               <p className="text-[10px] text-gray-400">PDF, JPG, PNG (Max 5MB)</p>
             </div>
+            {profileDocUrl && (
+              <div className="mt-2 text-xs text-[#1B4332] font-bold">
+                (Document available in profile. Drop new file to override)
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -440,12 +478,26 @@ function DocumentUploadCard({
                   <FileText className={status === "success" ? "text-green-600" : isWrongType ? "text-red-500" : isBlurry ? "text-yellow-600" : "text-[#1B4332]"} size={20} />
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
-                  <span className="text-[10px] text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                  <span className="text-xs font-bold text-gray-700 truncate">
+                    {isProfileSourced ? `${docName} (From Profile)` : file?.name}
+                  </span>
+                  {!isProfileSourced && file && (
+                    <span className="text-[10px] text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                  )}
+                  {isProfileSourced && profileDocUrl && (
+                    <a href={profileDocUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:underline">
+                      View Profile Document
+                    </a>
+                  )}
                 </div>
               </div>
               {status !== "success" && status !== "uploading" && (
                 <button onClick={onFileRemove} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                  <X size={18} />
+                </button>
+              )}
+              {isProfileSourced && (
+                <button onClick={onFileRemove} title="Remove profile document and upload a new one" className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                   <X size={18} />
                 </button>
               )}
@@ -511,7 +563,8 @@ function DocumentUploadCard({
            {status === "uploading" && <Loader2 className="animate-spin text-[#1B4332]" size={16} />}
            <span className={`text-[11px] font-bold uppercase tracking-tight
              ${status === "success" ? "text-green-600" : status === "error" ? "text-red-600" : "text-gray-400"}`}>
-             {status === "success" ? (lang === "EN" ? "Synced to Supabase" : "डेटाबेसमध्ये समाविष्ट") : 
+             {isProfileSourced ? (lang === "EN" ? "Using Profile Document" : "प्रोफाइल कागदपत्र वापरत आहे") :
+              status === "success" ? (lang === "EN" ? "Synced to Supabase" : "डेटाबेसमध्ये समाविष्ट") : 
               status === "uploading" ? (lang === "EN" ? "Uploading..." : "अपलोड होत आहे...") : 
               status === "error" ? (lang === "EN" ? "Upload Failed" : "अपलोड अयशस्वी") :
               (lang === "EN" ? "Awaiting Submission" : "सबमिशनची प्रतीक्षा")}
