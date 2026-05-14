@@ -58,6 +58,44 @@ export default function UploadDocumentsPage() {
     }
   };
 
+  const [validationStatuses, setValidationStatuses] = useState<Record<string, "idle" | "validating" | "clean" | "blurry" | "wrong_type" | "blurry_and_wrong_type" | "error">>({});
+  const [validationResults, setValidationResults] = useState<Record<string, { feedback: string; detectedDocType?: string; blurDescription?: string | null; typeMismatchReason?: string | null; }>>({});
+
+  const validateDocument = async (docName: string, file: File) => {
+    setValidationStatuses(prev => ({ ...prev, [docName]: "validating" }));
+    setValidationResults(prev => ({ ...prev, [docName]: { feedback: "Analysing with AI..." } }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('expectedDocType', docName);
+      const res = await fetch('/api/validate-document', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setValidationStatuses(prev => ({ ...prev, [docName]: "error" }));
+        setValidationResults(prev => ({ ...prev, [docName]: { feedback: "AI validation unavailable." } }));
+        return;
+      }
+      const v = data.validation;
+      setValidationStatuses(prev => ({ ...prev, [docName]: v.overallStatus }));
+      setValidationResults(prev => ({ ...prev, [docName]: { feedback: v.feedback, detectedDocType: v.detectedDocType, blurDescription: v.blurDescription, typeMismatchReason: v.typeMismatchReason } }));
+      if (v.overallStatus === "wrong_type" || v.overallStatus === "blurry_and_wrong_type") {
+        toast.error(`Wrong document for "${docName}"`, { description: v.typeMismatchReason || `Detected: ${v.detectedDocType}` });
+      } else if (v.overallStatus === "blurry") {
+        toast.warning(`Blur detected in "${docName}"`, { description: v.blurDescription || "Please upload a clearer image." });
+      } else if (v.overallStatus === "clean") {
+        toast.success(`"${docName}" looks good!`);
+      }
+    } catch {
+      setValidationStatuses(prev => ({ ...prev, [docName]: "error" }));
+      setValidationResults(prev => ({ ...prev, [docName]: { feedback: "Validation service unavailable." } }));
+    }
+  };
+
+  const handleFileSelect = (docName: string, file: File) => {
+    setFiles(prev => ({ ...prev, [docName]: file }));
+    validateDocument(docName, file);
+  };
+
   const removeDoc = (docName: string) => {
     const updated = { ...profileDocs };
     delete updated[docName];
@@ -67,6 +105,7 @@ export default function UploadDocumentsPage() {
     }
     setFiles(prev => ({ ...prev, [docName]: null }));
     setUploadStatus(prev => ({ ...prev, [docName]: "idle" }));
+    setValidationStatuses(prev => ({ ...prev, [docName]: "idle" }));
   };
 
   const handleUpload = async (docName: string) => {
@@ -155,10 +194,13 @@ export default function UploadDocumentsPage() {
                     lang={lang}
                     file={files[doc] || null}
                     status={uploadStatus[doc] || "idle"}
-                    onFileSelect={(f) => setFiles(prev => ({ ...prev, [doc]: f }))}
+                    validationStatus={validationStatuses[doc] || "idle"}
+                    validationResult={validationResults[doc]}
+                    onFileSelect={(f: File) => handleFileSelect(doc, f)}
                     onFileRemove={() => {
                       setFiles(prev => ({ ...prev, [doc]: null }));
                       setUploadStatus(prev => ({ ...prev, [doc]: "idle" }));
+                      setValidationStatuses(prev => ({ ...prev, [doc]: "idle" }));
                     }}
                     onSubmit={() => handleUpload(doc)}
                   />
@@ -172,7 +214,11 @@ export default function UploadDocumentsPage() {
   );
 }
 
-function DocumentUploader({ docName, lang, file, status, onFileSelect, onFileRemove, onSubmit }: any) {
+function DocumentUploader({ docName, lang, file, status, validationStatus = "idle", validationResult, onFileSelect, onFileRemove, onSubmit }: any) {
+  const isWrongType = validationStatus === "wrong_type" || validationStatus === "blurry_and_wrong_type";
+  const isBlurry = validationStatus === "blurry" || validationStatus === "blurry_and_wrong_type";
+  const isValidating = validationStatus === "validating";
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) onFileSelect(acceptedFiles[0]);
   }, [onFileSelect]);
@@ -193,10 +239,18 @@ function DocumentUploader({ docName, lang, file, status, onFileSelect, onFileRem
           <p className="text-xs font-bold text-gray-600">{lang === "EN" ? "Click or Drag & Drop" : "क्लिक करा किंवा ड्रॅग आणि ड्रॉप करा"}</p>
         </div>
       ) : (
-        <div className="border rounded-xl p-3 flex items-center justify-between bg-white shadow-sm">
+        <div className={`border rounded-xl p-3 flex items-center justify-between shadow-sm ${isWrongType ? "bg-red-50 border-red-300" : isBlurry ? "bg-yellow-50 border-yellow-300" : "bg-white border-gray-200"}`}>
           <div className="flex items-center gap-2 overflow-hidden">
-            <FileText className="text-[#1B4332]" size={16} />
-            <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
+            <FileText className={isWrongType ? "text-red-500" : isBlurry ? "text-yellow-600" : "text-[#1B4332]"} size={16} />
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
+              {isValidating && <span className="text-[10px] text-blue-600 animate-pulse">{lang === "EN" ? "Validating with AI..." : "AI द्वारे तपासणी करत आहे..."}</span>}
+              {!isValidating && validationResult?.feedback && (
+                <span className={`text-[10px] ${isWrongType ? "text-red-600" : isBlurry ? "text-yellow-700" : "text-green-600"}`}>
+                  {validationResult.feedback}
+                </span>
+              )}
+            </div>
           </div>
           {status !== "uploading" && (
             <button onClick={onFileRemove} className="p-1 text-gray-400 hover:text-red-500 transition-colors"><X size={14} /></button>
@@ -206,12 +260,15 @@ function DocumentUploader({ docName, lang, file, status, onFileSelect, onFileRem
 
       {file && (
         <button 
-          disabled={status === "uploading"}
+          disabled={status === "uploading" || isValidating}
           onClick={onSubmit}
-          className="w-full mt-2 bg-[#1B4332] text-white py-2 rounded-lg text-xs font-bold hover:bg-[#274e3d] transition-colors flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          className={`w-full mt-2 py-2 rounded-lg text-xs font-bold transition-colors flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${isWrongType ? "bg-red-100 text-red-700 hover:bg-red-200" : isBlurry ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-[#1B4332] text-white hover:bg-[#274e3d]"}`}
         >
-          {status === "uploading" ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          {status === "uploading" ? (lang === "EN" ? "Uploading..." : "अपलोड होत आहे...") : (lang === "EN" ? "Save to Profile" : "प्रोफाइलमध्ये सेव्ह करा")}
+          {status === "uploading" ? <Loader2 size={14} className="animate-spin" /> : isValidating ? <Loader2 size={14} className="animate-spin text-blue-500" /> : <Upload size={14} />}
+          {status === "uploading" ? (lang === "EN" ? "Uploading..." : "अपलोड होत आहे...") : 
+           isValidating ? (lang === "EN" ? "Wait..." : "प्रतीक्षा करा...") :
+           (isWrongType || isBlurry) ? (lang === "EN" ? "Upload Anyway (Not Recommended)" : "तरीही अपलोड करा") :
+           (lang === "EN" ? "Save to Profile" : "प्रोफाइलमध्ये सेव्ह करा")}
         </button>
       )}
     </div>
