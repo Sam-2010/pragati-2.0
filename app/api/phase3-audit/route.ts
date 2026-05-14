@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
     const landTypeNote = !needsLandTypeCheck
       ? `Rule 10 (Land Type Check) is NOT APPLICABLE for this subsidy. Set landTypeCheck to "NOT_APPLICABLE". Do not show or penalise for Jirayat/Bagayat.`
-      : `Rule 10: For this subsidy, land MUST be ${requiredLandType}. Remember the CRITICAL OVERRIDE: Check the Form 12 crop details at the bottom. If the 7/12 top summary shows a different land type, but the most recent Form 12 data matches ${requiredLandType}, set landTypeCheck to "PASS". Only set to "FAIL" if both the top summary and Form 12 fail to show ${requiredLandType}.`;
+      : `Rule 10: For this subsidy, land MUST be ${requiredLandType}. CRITICAL INSTRUCTION: If the waterSourceCheck is "PASS" (meaning you found a well/vhir), then the land is physically Bagayat. You MUST automatically set landTypeCheck to "PASS" if waterSourceCheck is "PASS". Do not overthink the text classification.`;
 
     const prompt = `
     You are Pragati AI, an expert agricultural subsidy auditor for the Government of Maharashtra.
@@ -123,7 +123,6 @@ export async function POST(req: Request) {
           * "Tractor", "Implements": Either land type acceptable. No restriction.
         - If land type does not match requirements, set landTypeCheck to "FAIL" and flag as "LAND_TYPE_MISMATCH".
 
-    APPLICABILITY FOR THIS APPLICATION:
     ${waterSourceNote}
     ${landTypeNote}
 
